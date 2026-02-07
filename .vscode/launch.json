@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Download data (NASDAQ-100)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/stock_analysis/scripts/download_data.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Returns heatmap",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/stock_analysis/scripts/returns_heatmap.py",
+      "args": ["--years", "5"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}

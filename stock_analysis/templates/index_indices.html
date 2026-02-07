@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Stock Analysis Heatmaps – Indices{% endblock %}
+{% block content %}
+  <h2>Select an index</h2>
+  <p style="color: var(--muted); margin-bottom: 1.5rem;">Data and heatmaps are grouped by index (symbol list). Choose one to view periods.</p>
+  <div class="period-grid">
+    {% for idx in indices %}
+      <a href="{{ url_for('index_periods', index_id=idx.id) }}" class="card" style="max-width: 280px;">
+        <h3>{{ idx.label }}</h3>
+        <p>View periods</p>
+      </a>
+    {% endfor %}
+  </div>
+  {% if not indices %}
+    <p style="color: var(--muted);">No index folders found. Run <code style="background: var(--surface); padding: 2px 6px; border-radius: 4px;">python scripts/returns_heatmap.py</code> to generate heatmaps per index.</p>
+  {% endif %}
+{% endblock %}
+{% block extra_css %}
+  .period-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+{% endblock %}
