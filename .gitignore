@@ -1,6 +1,6 @@
 # Generated data and heatmaps (large; regenerate with scripts)
-stock_analysis/heatmaps/
-stock_analysis/data/
+stock-analysis/heatmaps/
+stock-analysis/data/
 
 # Python
 .venv/
