@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Stock Analysis Heatmaps – Periods{% endblock %}
+{% block content %}
+  <h2>Select a period</h2>
+  <p style="color: var(--muted); margin-bottom: 1.5rem;">Choose a timeframe to view the performance comparison heatmap and per-symbol monthly returns.</p>
+  <div class="period-grid">
+    {% for p in periods %}
+      <a href="{{ url_for('period', period_id=p.id) }}" class="card" style="max-width: 280px;">
+        <h3>{{ p.label }}</h3>
+        <p>{{ p.symbol_count }} symbol heatmap{{ 's' if p.symbol_count != 1 else '' }}{% if p.comparison_count %} · comparison included{% endif %}</p>
+      </a>
+    {% endfor %}
+  </div>
+  {% if not periods %}
+    <p style="color: var(--muted);">No heatmap folders found. Run the heatmap script first, e.g. <code style="background: var(--surface); padding: 2px 6px; border-radius: 4px;">python scripts/returns_heatmap.py</code></p>
+  {% endif %}
+{% endblock %}
+{% block extra_css %}
+  .period-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+{% endblock %}

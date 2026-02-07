@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Compare symbols – Stock Analysis{% endblock %}
+{% block content %}
+  <h2>Compare performance (YTD, 1Y – 20Y)</h2>
+  <p style="color: var(--muted); margin-bottom: 1rem;">Enter tickers separated by commas or spaces. Table shows total return % and growth of $10,000 (YTD and over the last N full calendar years).</p>
+
+  <form method="get" action="{{ url_for('compare') }}" class="compare-form" style="margin-bottom: 1.5rem;">
+    <label for="symbols" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbols</label>
+    <input
+      type="text"
+      id="symbols"
+      name="symbols"
+      value="{{ symbols_param }}"
+      placeholder="e.g. AAPL, MSFT, GOOGL, SPY, QQQ"
+      style="width: 100%; max-width: 420px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
+      autofocus
+    />
+    <button type="submit" style="margin-top: 0.75rem; padding: 0.6rem 1.2rem; font-size: 0.95rem; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;">
+      Compare
+    </button>
+  </form>
+
+  {% if result %}
+    {% if result.missing %}
+      <p style="color: #f59e0b; margin-bottom: 1rem;">No data found for: {{ result.missing | join(", ") }}. Ensure those symbols are downloaded under <code style="background: var(--surface); padding: 2px 6px;">data/</code> (e.g. run <code style="background: var(--surface); padding: 2px 6px;">python scripts/download_by_index.py</code> for an index that includes them).</p>
+    {% endif %}
+
+    <div class="table-wrap" style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface);">
+      <table class="compare-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+        <thead>
+          <tr>
+            <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: var(--surface);">Symbol</th>
+            {% for y in result.periods %}
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap;">{% if y == "YTD" %}YTD{% else %}{{ y }}Y{% endif %}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in result.rows %}
+            <tr>
+              <td style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: var(--surface);">
+                <a href="{{ row.yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">{{ row.symbol }}</a>
+              </td>
+              {% for y in result.periods %}
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">
+                  {% if y in row.returns %}
+                    <div>{{ "%.1f" | format(row.returns[y]) }}%</div>
+                    <div style="font-size: 0.8em; color: var(--muted);">{{ row.growth_10k[y] }}</div>
+                  {% else %}
+                    <span style="color: var(--muted);">—</span>
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--muted);">Total return = (price at end / price at start) − 1. $10K = value of $10,000 invested at period start. YTD = year to date (Jan 1 of latest year in data). Other periods use full calendar years (Jan–Dec).</p>
+  {% elif symbols_list %}
+    <p style="color: var(--muted);">No comparison data to show. Enter symbols above and click Compare.</p>
+  {% endif %}
+{% endblock %}
+{% block extra_css %}
+  .compare-table tbody tr:hover { background: rgba(34, 197, 94, 0.06); }
+  .compare-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+{% endblock %}

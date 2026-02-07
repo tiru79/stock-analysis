@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}$10K growth since {{ start_year|default(2006) }} – {{ symbols_param|default('') or 'Stock Analysis' }}{% endblock %}
+{% block content %}
+  <h2>Cumulative $10K growth</h2>
+  <p style="color: var(--muted); margin-bottom: 1rem;">Enter symbols to see how $10,000 invested at the start of the chosen year would have grown by the end of each year. Default start year is 2006.</p>
+
+  <form method="get" action="{{ url_for('symbol_growth') }}" class="symbol-growth-form" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
+      <div>
+        <label for="symbols" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbols</label>
+        <input
+          type="text"
+          id="symbols"
+          name="symbols"
+          value="{{ symbols_param|default('', true) }}"
+          placeholder="e.g. AAPL, MSFT, SPY"
+          style="width: 220px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
+          autofocus
+        />
+      </div>
+      <div>
+        <label for="start_year" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Start year</label>
+        <input
+          type="number"
+          id="start_year"
+          name="start_year"
+          value="{{ start_year_param|default('2006', true) }}"
+          placeholder="2006"
+          min="1990"
+          max="2100"
+          style="width: 100px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
+        />
+      </div>
+      <div>
+        <label for="year" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Single year (optional)</label>
+        <input
+          type="number"
+          id="year"
+          name="year"
+          value="{{ year_param|default('', true) }}"
+          placeholder="—"
+          min="1990"
+          max="2100"
+          style="width: 100px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
+        />
+      </div>
+      <button type="submit" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;">
+        Show
+      </button>
+    </div>
+  </form>
+
+  {% if error|default('') %}
+    <p style="color: #f59e0b; margin-bottom: 1rem;">{{ error }}</p>
+    {% if yahoo_url|default(none) %}
+      <p><a href="{{ yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent);">View on Yahoo Finance ↗</a></p>
+    {% endif %}
+  {% endif %}
+
+  {% if cumulative_since and cumulative_since.rows and cumulative_since.years %}
+    {% if cumulative_since.missing|default([]) %}
+      <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem;">No data for: {{ cumulative_since.missing | join(", ") }}</p>
+    {% endif %}
+
+    <h3 style="font-size: 1rem; margin: 1rem 0 0.75rem;">Cumulative growth of $10,000 since {{ cumulative_since.start_year }}</h3>
+    <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem;">For each year: <strong>$10K value</strong> at end of year, <strong>year %</strong> = that year’s return, <strong>cum. %</strong> = total return since start.</p>
+
+    {% if cumulative_since.rows | length == 1 %}
+      {% set r0 = cumulative_since.rows[0] %}
+      <p style="margin-bottom: 0.75rem;"><a href="{{ r0.yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">{{ r0.symbol }} on Yahoo Finance ↗</a></p>
+      {% if one_year_result|default(none) %}
+        <p style="font-size: 0.9rem; margin-bottom: 0.5rem;"><strong>That year ({{ one_year_result.year }}):</strong> {% if r0.return_pct_yr is not none %}{{ "%.1f" | format(r0.return_pct_yr) }}%{% else %}—{% endif %} return · {% if r0.growth_10k_yr %}{{ r0.growth_10k_yr }}{% else %}—{% endif %} $10K grew to</p>
+      {% endif %}
+      <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem;"><strong>Cumulative</strong> — $10K value, that year’s return %, and cumulative return % at end of each year:</p>
+      <div class="table-wrap" style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 2rem;">
+        <table class="growth-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr>
+              <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border);">End of year</th>
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border);">$10K value</th>
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border);">Year %</th>
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border);">Cum. %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for y in cumulative_since.years %}
+              {% set cell = cumulative_since.rows[0]['values'].get(y) %}
+              <tr>
+                <td style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border);">{{ y }}</td>
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">{{ cell.value_fmt if cell else '—' }}</td>
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">{% if cell and cell.return_pct is not none %}{{ "%.1f" | format(cell.return_pct) }}%{% else %}—{% endif %}</td>
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">{% if cell and cell.cumulative_pct is not none %}{{ "%.1f" | format(cell.cumulative_pct) }}%{% else %}—{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="table-wrap" style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 2rem;">
+        <table class="growth-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr>
+              <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: var(--surface);">Symbol</th>
+              {% if one_year_result|default(none) %}
+                <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap;">{{ one_year_result.year }} Return %</th>
+                <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap;">{{ one_year_result.year }} $10K</th>
+              {% endif %}
+              {% for y in cumulative_since.years %}
+                <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap;" title="$10K · Yr % · Cum %">{{ y }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in cumulative_since.rows %}
+              <tr>
+                <td style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: var(--surface);">
+                  <a href="{{ r.yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">{{ r.symbol }}</a>
+                </td>
+                {% if one_year_result|default(none) %}
+                  <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">{% if r.return_pct_yr is not none %}{{ "%.1f" | format(r.return_pct_yr) }}%{% else %}<span style="color: var(--muted);">—</span>{% endif %}</td>
+                  <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">{{ r.growth_10k_yr|default('—', true) }}</td>
+                {% endif %}
+                {% for y in cumulative_since.years %}
+                  {% set cell = r['values'].get(y) %}
+                  <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+                    {% if cell %}
+                      <div>{{ cell.value_fmt }}</div>
+                      <div style="font-size: 0.8em; color: var(--muted);">{% if cell.return_pct is not none %}{{ "%.1f" | format(cell.return_pct) }}%{% else %}—{% endif %} yr</div>
+                      <div style="font-size: 0.8em; color: var(--muted);">{% if cell.cumulative_pct is not none %}{{ "%.1f" | format(cell.cumulative_pct) }}%{% else %}—{% endif %} cum</div>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}
+{% block extra_css %}
+  .growth-table tbody tr:hover { background: rgba(34, 197, 94, 0.06); }
+  .symbol-growth-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+{% endblock %}
