@@ -1,0 +1,23 @@
+# Generated data and heatmaps (large; regenerate with scripts)
+stock_analysis/heatmaps/
+stock_analysis/data/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.so
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
