@@ -1,9 +1,0 @@
-# Data & heatmap generation (scripts)
-yfinance
-pandas
-matplotlib
-seaborn
-lxml
-
-# Web app (present heatmaps)
-flask>=3.0
