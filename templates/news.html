@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}News – Financial Markets Analysis{% endblock %}
+{% block content %}
+  <h2>Latest market news</h2>
+  <p style="color: var(--muted); margin-bottom: 1rem;">Headlines from multiple sources. Enter a symbol to see news for that ticker (via Yahoo Finance).</p>
+
+  <form method="get" action="{{ url_for('news') }}" class="news-form" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
+      <div>
+        <label for="symbol" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbol (for ticker-specific news)</label>
+        <input
+          type="text"
+          id="symbol"
+          name="symbol"
+          value="{{ symbol_param|default('SPY', true) }}"
+          placeholder="e.g. SPY, AAPL, NVDA"
+          style="width: 140px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
+        />
+      </div>
+      <button type="submit" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;">Refresh</button>
+    </div>
+  </form>
+
+  {% if not yfinance_available and symbol_items is defined %}
+    <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem;">Install <code style="background: var(--surface); padding: 2px 6px;">yfinance</code> for symbol-specific news: <code style="background: var(--surface); padding: 2px 6px;">pip install yfinance</code></p>
+  {% endif %}
+
+  <div class="news-grid" style="display: grid; gap: 1.5rem;">
+    <section style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden;">
+      <h3 style="margin: 0; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 1rem;">Market news (RSS)</h3>
+      <div style="padding: 0.75rem 1rem;">
+        {% if rss_items %}
+          <ul style="list-style: none; margin: 0; padding: 0;">
+            {% for item in rss_items %}
+              <li style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                <a href="{{ item.link }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; font-weight: 500;">{{ item.title }}</a>
+                <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;">{{ item.source }}{% if item.published %} · {{ item.published }}{% endif %}</div>
+                {% if item.summary %}<p style="margin: 0.35rem 0 0; font-size: 0.85rem; color: var(--muted);">{{ item.summary }}</p>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p style="color: var(--muted); margin: 0;">No headlines loaded. RSS feeds may be temporarily unavailable.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden;">
+      <h3 style="margin: 0; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 1rem;">News for {{ symbol_param }}</h3>
+      <div style="padding: 0.75rem 1rem;">
+        {% if symbol_items %}
+          <ul style="list-style: none; margin: 0; padding: 0;">
+            {% for item in symbol_items %}
+              <li style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+                <a href="{{ item.link }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; font-weight: 500;">{{ item.title }}</a>
+                <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;">{{ item.source }}{% if item.published %} · {{ item.published }}{% endif %}</div>
+                {% if item.summary %}<p style="margin: 0.35rem 0 0; font-size: 0.85rem; color: var(--muted);">{{ item.summary }}</p>{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% elif yfinance_available %}
+          <p style="color: var(--muted); margin: 0;">No news returned for {{ symbol_param }}. Try another symbol (e.g. AAPL, SPY).</p>
+        {% else %}
+          <p style="color: var(--muted); margin: 0;">Symbol-specific news requires yfinance.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--muted);">RSS: Yahoo Finance, Reuters, CNBC, MarketWatch. Ticker news: Yahoo Finance. Links open in a new tab.</p>
+{% endblock %}
+{% block extra_css %}
+  .news-form input:focus { outline: none; border-color: var(--accent); }
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Charts ({{ years }}Y) – Financial Markets Analysis{% endblock %}
+{% block content %}
+  <h2>20-year price charts</h2>
+  <p style="color: var(--muted); margin-bottom: 1rem;">Compare symbols over the last 20 years (normalized to 100 at start). Data from your downloaded CSVs.</p>
+
+  <form method="get" action="{{ url_for('charts') }}" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
+      <div>
+        <label for="symbols" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbols</label>
+        <input type="text" id="symbols" name="symbols" value="{{ symbols_param|default('', true) }}"
+          placeholder="e.g. QQQ, SPY, SLV, GLD"
+          style="width: 320px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" />
+      </div>
+      <div>
+        <label for="years" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Years</label>
+        <input type="number" id="years" name="years" value="{{ years|default(20, true) }}" min="5" max="20"
+          style="width: 70px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" />
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;">
+        <span style="font-size: 0.9rem; color: var(--muted);">Technical indicators:</span>
+        <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" name="indicators" value="sma50" {% if 'sma50' in chart_data.indicators %}checked{% endif %} />
+          SMA 50
+        </label>
+        <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" name="indicators" value="sma200" {% if 'sma200' in chart_data.indicators %}checked{% endif %} />
+          SMA 200
+        </label>
+      </div>
+      <button type="submit" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;">Update chart</button>
+    </div>
+  </form>
+
+  {% if chart_data.missing %}
+    <p style="color: #f59e0b; margin-bottom: 1rem;">No data for: {{ chart_data.missing | join(", ") }}. Download data first (e.g. <code style="background: var(--surface); padding: 2px 6px;">python scripts/download_by_index.py NASDAQ100</code>).</p>
+  {% endif %}
+
+  {% if chart_data.series %}
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
+      <canvas id="chart20y" style="max-height: 420px;" width="800" height="400"></canvas>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--muted);">Indexed to 100 at start of period. Use &quot;Technical indicators&quot; to add SMA 50 and SMA 200 (dashed). Up to 8 symbols. Past performance does not guarantee future results.</p>
+  {% else %}
+    <p style="color: var(--muted);">Enter symbols and click Update chart. Use comma-separated tickers (e.g. QQQ, SPY, SLV, GLD).</p>
+  {% endif %}
+{% endblock %}
+{% block extra_css %}
+  .charts-form input:focus { outline: none; border-color: var(--accent); }
+{% endblock %}
+{% block extra_js %}
+  {% if chart_data.series %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+  (function() {
+    var chartData = {{ chart_data_json | safe }};
+    if (!chartData.series || chartData.series.length === 0) return;
+    var priceColors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+    var symbolToColorIndex = {};
+    var datasets = chartData.series.map(function(s, i) {
+      var isIndicator = s.type && (s.type === 'sma50' || s.type === 'sma200');
+      var baseSym = s.symbol.replace(/ SMA \d+$/, '');
+      var colorIndex = isIndicator ? (symbolToColorIndex[baseSym] !== undefined ? symbolToColorIndex[baseSym] : 0) : (symbolToColorIndex[baseSym] = Object.keys(symbolToColorIndex).length % priceColors.length);
+      var color = priceColors[colorIndex];
+      return {
+        label: s.symbol,
+        data: s.values,
+        borderColor: color,
+        backgroundColor: color + '20',
+        borderWidth: isIndicator ? 1.5 : 2,
+        borderDash: isIndicator ? [6, 4] : [],
+        fill: false,
+        tension: 0.1,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        spanGaps: false
+      };
+    });
+    var labels = chartData.dates && chartData.dates.length ? chartData.dates : (chartData.series[0] && chartData.series[0].dates);
+    new Chart(document.getElementById('chart20y'), {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { position: 'top', labels: { color: '#e4e4e7', usePointStyle: true } },
+          tooltip: {
+            backgroundColor: '#18181c',
+            titleColor: '#e4e4e7',
+            bodyColor: '#e4e4e7',
+            borderColor: '#2a2a30',
+            borderWidth: 1,
+            callbacks: {
+              label: function(ctx) {
+                if (ctx.parsed.y == null) return ctx.dataset.label + ': —';
+                return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + ' (indexed)';
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#2a2a30' },
+            ticks: { color: '#71717a', maxTicksLimit: 12 }
+          },
+          y: {
+            grid: { color: '#2a2a30' },
+            ticks: { color: '#71717a' }
+          }
+        }
+      }
+    });
+  })();
+  </script>
+  {% endif %}
+{% endblock %}

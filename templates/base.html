@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Stock Analysis Heatmaps{% endblock %}</title>
+  <title>{% block title %}Financial Markets Analysis{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -75,11 +75,15 @@
 <body>
   <header>
     <div class="wrap">
-      <h1><a href="{{ url_for('index') }}">Stock Analysis Heatmaps</a></h1>
+      <h1><a href="{{ url_for('landing') }}">Financial Markets Analysis</a></h1>
       <nav>
-        <a href="{{ url_for('index') }}">Indices</a>
+        <a href="{{ url_for('news') }}">News</a>
+        <a href="{{ url_for('index') }}">Indexes</a>
         <a href="{{ url_for('compare') }}">Compare symbols</a>
         <a href="{{ url_for('symbol_growth') }}">$10K growth</a>
+        <a href="{{ url_for('monthly_performance') }}">Monthly performance</a>
+        <a href="{{ url_for('strategies') }}">Strategies</a>
+        <a href="{{ url_for('charts') }}">Charts</a>
         <a href="/calendar" title="Upcoming earnings calendar">Calendar</a>
       </nav>
       {% block nav %}{% endblock %}

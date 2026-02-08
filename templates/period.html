@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}{{ period_label }} – Stock Analysis Heatmaps{% endblock %}
+{% block title %}{{ period_label }} – Financial Markets Analysis{% endblock %}
 {% block nav %}
   <nav>
     {% if index_id %}
-      <a href="{{ url_for('index') }}">Indices</a>
+      <a href="{{ url_for('index') }}">Indexes</a>
       <a href="{{ url_for('index_periods', index_id=index_id) }}">{{ index_label }}</a>
     {% else %}
       <a href="{{ url_for('index') }}">All periods</a>
@@ -22,21 +22,21 @@
 
   {% if comparison %}
     <section class="comparison-section" style="margin-bottom: 2.5rem;">
-      <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--muted);">Performance comparison · Return (%) · $10K growth</h3>
+      <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--muted);">{{ period_label }} — Performance comparison · Return (%) · $10K growth</h3>
       <div class="img-wrap">
-        <img src="{{ url_for('heatmap_file', filepath=heatmap_base + '/' + comparison) }}" alt="Performance comparison heatmap" loading="lazy">
+        <img src="/heatmaps/{{ heatmap_base }}/{{ comparison }}" alt="{{ period_label }} — Performance comparison heatmap" loading="lazy">
       </div>
     </section>
   {% endif %}
 
-  <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--muted);">Monthly returns by symbol</h3>
+  <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--muted);">{{ period_label }} — Monthly returns by symbol</h3>
   <div class="symbol-grid">
     {% if symbol_list and symbol_list|length > 0 %}
     {% for s in symbol_list %}
     <div class="symbol-card">
       <div class="img-wrap">
         <a href="{{ s.yahoo_url }}" target="_blank" rel="noopener" class="symbol-img-link" title="View {{ s.ticker }} on Yahoo Finance">
-          <img src="{{ url_for('heatmap_file', filepath=heatmap_base + '/' + s.filename) }}" alt="{{ s.label }}" loading="lazy">
+          <img src="/heatmaps/{{ heatmap_base }}/{{ s.filename }}" alt="{{ s.label }}" loading="lazy">
         </a>
       </div>
       <p class="symbol-label"><a href="{{ s.yahoo_url }}" target="_blank" rel="noopener" class="symbol-hyperlink">{{ s.label }}</a></p>
@@ -50,7 +50,7 @@
     <div class="symbol-card">
       <div class="img-wrap">
         <a href="https://finance.yahoo.com/quote/{{ ticker }}" target="_blank" rel="noopener" class="symbol-img-link" title="View {{ ticker }} on Yahoo Finance">
-          <img src="{{ url_for('heatmap_file', filepath=heatmap_base + '/' + name) }}" alt="{{ label }}" loading="lazy">
+          <img src="/heatmaps/{{ heatmap_base }}/{{ name }}" alt="{{ label }}" loading="lazy">
         </a>
       </div>
       <p class="symbol-label"><a href="https://finance.yahoo.com/quote/{{ ticker }}" target="_blank" rel="noopener" class="symbol-hyperlink">{{ label }}</a></p>
@@ -60,7 +60,7 @@
     {% endif %}
   </div>
   {% if not symbols and not comparison %}
-    <p style="color: var(--muted);">No images in this period.</p>
+    <p style="color: var(--muted);">No images in this period. <a href="{{ url_for('heatmaps_debug') }}" style="color: var(--accent);">Check heatmaps path</a></p>
   {% endif %}
 {% endblock %}
 {% block extra_css %}

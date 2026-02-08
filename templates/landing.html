@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Financial Markets Analysis – Market trends, sentiment &amp; news{% endblock %}
+{% block content %}
+  <section class="landing-hero" style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1.5rem; font-weight: 700; margin: 0 0 0.5rem; letter-spacing: -0.02em;">Current market at a glance</h2>
+    <p style="color: var(--muted); margin: 0; font-size: 0.95rem;">Indexes, social sentiment, and latest headlines. Data refreshes on each visit.</p>
+  </section>
+
+  <div class="landing-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+    <section class="market-snapshot" style="border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden;">
+      <h3 style="margin: 0; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 1rem;">Market snapshot</h3>
+      <div style="padding: 1rem;">
+        {% if market_snapshot %}
+          <ul style="list-style: none; margin: 0; padding: 0;">
+            {% for m in market_snapshot %}
+              <li style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                <span><strong>{{ m.symbol }}</strong> <span style="color: var(--muted); font-size: 0.9em;">{{ m.name }}</span></span>
+                <span style="font-family: 'JetBrains Mono', monospace;">
+                  {% if m.symbol == '^VIX' %}{{ "%.1f" | format(m.price) }}{% else %}${{ "%.2f" | format(m.price) }}{% endif %}
+                  <span style="color: {% if m.change_label == 'up' %}var(--accent){% else %}#f87171{% endif %}; font-size: 0.9em;">{{ "%+.2f" | format(m.change_pct) }}%</span>
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% elif yfinance_available %}
+          <p style="color: var(--muted); margin: 0;">Loading… Refresh the page.</p>
+        {% else %}
+          <p style="color: var(--muted); margin: 0;">Install <code style="background: var(--bg); padding: 2px 6px;">yfinance</code> for live indices.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="social-sentiment" style="border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden;">
+      <h3 style="margin: 0; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 1rem;">Social sentiment (StockTwits)</h3>
+      <div style="padding: 1rem;">
+        {% if sentiment %}
+          <ul style="list-style: none; margin: 0; padding: 0;">
+            {% for s in sentiment %}
+              <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                  <strong>{{ s.symbol }}</strong>
+                  <span style="font-size: 0.8rem; color: var(--muted);">{{ s.message_count }} messages</span>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.9rem;">
+                  <span style="color: var(--accent);">Bull {{ s.bullish_pct }}%</span>
+                  <span style="color: #f87171;">Bear {{ s.bearish_pct }}%</span>
+                </div>
+                <div style="height: 6px; background: var(--bg); border-radius: 3px; margin-top: 0.25rem; overflow: hidden; display: flex;">
+                  <span style="width: {{ s.bullish_pct }}%; background: var(--accent);"></span>
+                  <span style="width: {{ s.bearish_pct }}%; background: #f87171;"></span>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p style="color: var(--muted); margin: 0;">Sentiment from StockTwits (SPY, QQQ, AAPL). If empty, the API may be temporarily unavailable.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <section class="headlines-section" style="margin-bottom: 2rem;">
+    <section class="headlines" style="border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden;">
+      <h3 style="margin: 0; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 1rem;">Latest headlines</h3>
+      <div style="padding: 1rem;">
+        {% if headlines %}
+        <ul style="list-style: none; margin: 0; padding: 0;">
+          {% for item in headlines %}
+            <li style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+              <a href="{{ item.link }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; font-weight: 500;">{{ item.title }}</a>
+              <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;">{{ item.source }}{% if item.published %} · {{ item.published }}{% endif %}</div>
+            </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+          <p style="color: var(--muted); margin: 0;">No headlines loaded. Check the <a href="{{ url_for('news') }}" style="color: var(--accent);">News</a> tab for more.</p>
+        {% endif %}
+      </div>
+    </section>
+  </section>
+
+  <p style="margin-top: 1.5rem; text-align: center;">
+    <a href="{{ url_for('index') }}" class="card" style="display: inline-block; padding: 0.75rem 1.5rem;">View heatmaps by index →</a>
+    <a href="{{ url_for('compare') }}" class="card" style="display: inline-block; padding: 0.75rem 1.5rem; margin-left: 0.5rem;">Compare symbols →</a>
+    <a href="{{ url_for('news') }}" class="card" style="display: inline-block; padding: 0.75rem 1.5rem; margin-left: 0.5rem;">More news →</a>
+  </p>
+{% endblock %}

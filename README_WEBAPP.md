@@ -1,4 +1,4 @@
-# Stock Analysis Heatmaps – Web App
+# Financial Markets Analysis – Web App
 
 Present your generated heatmaps in a simple web UI.
 

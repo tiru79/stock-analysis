@@ -132,11 +132,11 @@ def write_index():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stock Analysis Heatmaps</title>
+  <title>Financial Markets Analysis</title>
   <style>{BASE_CSS}</style>
 </head>
 <body>
-  <header><div class="wrap"><h1>Stock Analysis Heatmaps</h1></div></header>
+  <header><div class="wrap"><h1>Financial Markets Analysis</h1></div></header>
   <main><div class="wrap">
     <h2>{title}</h2>
     <div class="period-grid">{links if links else f'<p style="color:var(--muted)">{msg}</p>'}</div>
@@ -165,7 +165,7 @@ def write_index_periods(index_id: str):
   <style>{BASE_CSS}</style>
 </head>
 <body>
-  <header><div class="wrap"><h1><a href="../index.html">Stock Analysis Heatmaps</a></h1><nav><a href="../index.html">Indices</a></nav></div></header>
+  <header><div class="wrap"><h1><a href="../index.html">Financial Markets Analysis</a></h1><nav><a href="../index.html">Indexes</a></nav></div></header>
   <main><div class="wrap">
     <h2>{index_id} – Select a period</h2>
     <div class="period-grid">{links if links else '<p style="color:var(--muted)">No periods.</p>'}</div>
@@ -186,7 +186,7 @@ def write_period(period_id: str, period_label: str, periods: list[dict], index_i
             f'<a href="{p["id"]}/index.html">{"[ " + p["id"] + " ]" if p["id"] == period_id else p["id"]}</a>'
             for p in periods
         )
-        nav_links = f'<a href="../../index.html">Indices</a> <a href="../index.html">{index_id}</a> {nav_links}'
+        nav_links = f'<a href="../../index.html">Indexes</a> <a href="../index.html">{index_id}</a> {nav_links}'
     else:
         back_url = "../index.html"
         nav_links = "".join(
@@ -212,11 +212,11 @@ def write_period(period_id: str, period_label: str, periods: list[dict], index_i
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{period_label} – Stock Analysis Heatmaps</title>
+  <title>{period_label} – Financial Markets Analysis</title>
   <style>{BASE_CSS}</style>
 </head>
 <body>
-  <header><div class="wrap"><h1><a href="{('../../index.html' if index_id else '../index.html')}">Stock Analysis Heatmaps</a></h1><nav>{nav_links}</nav></div></header>
+  <header><div class="wrap"><h1><a href="{('../../index.html' if index_id else '../index.html')}">Financial Markets Analysis</a></h1><nav>{nav_links}</nav></div></header>
   <main><div class="wrap">
     <h2>{period_label}</h2>{comparison_block}
     <h3 style="font-size:1rem;color:var(--muted);margin-bottom:0.75rem;">Monthly returns by symbol</h3>

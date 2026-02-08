@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Strategies – Financial Markets Analysis{% endblock %}
+{% block content %}
+  <h2>Technical analysis strategies</h2>
+  <p style="color: var(--muted); margin-bottom: 1rem;">Backtest simple rules on your data. Compare strategy return vs buy-and-hold over the last N years. Data from your downloaded CSVs.</p>
+  <p style="font-size: 0.9rem; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;">
+    <strong>Strategies that can beat buy &amp; hold:</strong> <em>200-day trend</em> and <em>SMA 50/200</em> often outperform by staying out in bear markets. <em>SMA 20/50</em> and <em>MACD</em> can capture trends earlier. <em>RSI oversold</em> can help in range-bound markets. Use &quot;Compare all&quot; to see which beat B&amp;H for your symbols and period.
+  </p>
+
+  <form method="get" action="{{ url_for('strategies') }}" class="strategies-form" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
+      <div>
+        <label for="symbols" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbols</label>
+        <input
+          type="text"
+          id="symbols"
+          name="symbols"
+          value="{{ symbols_param|default('', true) }}"
+          placeholder="e.g. QQQ, SPY, SLV, GLD"
+          style="width: 320px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
+        />
+      </div>
+      <div>
+        <label for="strategy" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">View</label>
+        <select name="strategy" id="strategy" style="padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); min-width: 240px;">
+          <option value="all" {% if strategy_id == 'all' %}selected{% endif %} title="Run Buy &amp; Hold and all 7 strategies; compare returns side by side.">Compare all (Buy &amp; Hold vs strategies)</option>
+          {% for s in strategies_list %}
+            <option value="{{ s.id }}" {% if strategy_id == s.id %}selected{% endif %} title="{{ s.tooltip | default(s.desc, true) }}">{{ s.label }} only</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="years" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Years</label>
+        <input type="number" id="years" name="years" value="{{ years|default(10, true) }}" min="5" max="20"
+          style="width: 70px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" />
+      </div>
+      <button type="submit" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;">Backtest</button>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem;">
+      {% if strategy_id == 'all' %}Buy &amp; Hold vs 7 strategies: SMA 50/200 &amp; 20/50, 200d trend, Momentum, MACD, RSI filter &amp; RSI oversold.{% endif %}
+      {% for s in strategies_list %}
+        {% if s.id == strategy_id %}<strong>{{ s.label }}:</strong> {{ s.desc }}{% endif %}
+      {% endfor %}
+    </p>
+  </form>
+
+  {% if result %}
+    {% if result.missing %}
+      <p style="color: #f59e0b; margin-bottom: 1rem;">No data for: {{ result.missing | join(", ") }}. Download data for an index that includes them (e.g. <code style="background: var(--surface); padding: 2px 6px;">python scripts/download_by_index.py NASDAQ100</code>).</p>
+    {% endif %}
+
+    {% if result.compare_all and result.get('best_strategy_label') %}
+      <p style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">
+        <strong>Based on your data:</strong> Best strategy — <strong>{{ result.best_strategy_label }}</strong>
+        (avg {{ "%+.1f" | format(result.best_strategy_avg_excess) }}% excess vs buy &amp; hold over {{ result.best_strategy_symbol_count }} symbol{{ 's' if result.best_strategy_symbol_count != 1 else '' }};
+        beat B&amp;H in {{ result.best_strategy_beats_count }} of {{ result.best_strategy_symbol_count }}).
+      </p>
+    {% endif %}
+
+    {% if result.compare_all %}
+      <div class="table-wrap" style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface);">
+        <table class="strategies-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr>
+              <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: var(--surface);">Symbol</th>
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border);">
+                <span class="strategy-tip-wrap">
+                  Buy &amp; Hold ({{ result.years }}Y)
+                  <button type="button" class="strategy-tip-btn" aria-label="How it works" title="Click for buy/sell details">ⓘ</button>
+                  <span class="strategy-tip-popover" role="dialog" aria-label="Buy and sell rules">
+                    <strong class="strategy-tip-title">How it works — Buy &amp; Sell</strong>
+                    <p class="strategy-tip-body">BUY at start and hold. No sell rule; always invested.</p>
+                    <button type="button" class="strategy-tip-close" aria-label="Close">×</button>
+                  </span>
+                </span>
+              </th>
+              {% for s in strategies_list %}
+                <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap;">
+                  <span class="strategy-tip-wrap">
+                    {{ s.label }}
+                    <button type="button" class="strategy-tip-btn" aria-label="How it works: buy and sell" title="Click for buy/sell details">ⓘ</button>
+                    <span class="strategy-tip-popover" role="dialog" aria-label="Buy and sell rules">
+                      <strong class="strategy-tip-title">How it works — Buy &amp; Sell</strong>
+                      <p class="strategy-tip-body">{{ s.buy_sell | default(s.tooltip, true) | default(s.desc, true) }}</p>
+                      <button type="button" class="strategy-tip-close" aria-label="Close">×</button>
+                    </span>
+                  </span>
+                </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in result.rows %}
+              <tr>
+                <td style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: var(--surface);">
+                  <a href="{{ row.yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">{{ row.symbol }}</a>
+                </td>
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">
+                  {% if row.buy_hold_pct is not none and row.buy_hold_pct == row.buy_hold_pct %}{{ "%.1f" | format(row.buy_hold_pct) }}%{% else %}<span style="color: var(--muted);">—</span>{% endif %}
+                </td>
+                {% for s in strategies_list %}
+                  <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">
+                    {% if row.strategies and row.strategies.get(s.id) %}
+                      {% set strat = row.strategies[s.id] %}
+                      {% if strat.get('strategy_pct') is not none %}
+                        <div>{{ "%.1f" | format(strat.strategy_pct) }}%</div>
+                        <div style="font-size: 0.8em; color: {% if strat.get('excess_pct') is not none and strat.excess_pct >= 0 %}var(--accent){% else %}#f87171{% endif %};">{% if strat.get('excess_pct') is not none %}{{ "%+.1f" | format(strat.excess_pct) }}% vs B&amp;H{% endif %} · {{ strat.get('trades', 0) }} trades</div>
+                      {% else %}
+                        <span style="color: var(--muted);">—</span>
+                      {% endif %}
+                    {% else %}
+                      <span style="color: var(--muted);">—</span>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {% set _sel = strategies_list | selectattr('id', 'eq', strategy_id) | first %}
+      <div class="table-wrap" style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface);">
+        <table class="strategies-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr>
+              <th style="text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border);">Symbol</th>
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border);">
+                <span class="strategy-tip-wrap">
+                  Strategy return ({{ result.years }}Y)
+                  <button type="button" class="strategy-tip-btn" aria-label="How it works: buy and sell" title="Click for buy/sell details">ⓘ</button>
+                  <span class="strategy-tip-popover" role="dialog" aria-label="Buy and sell rules">
+                    <strong class="strategy-tip-title">How it works — Buy &amp; Sell</strong>
+                    <p class="strategy-tip-body">{{ (_sel.buy_sell | default(_sel.tooltip, true) | default(_sel.desc, true)) if _sel else '' }}</p>
+                    <button type="button" class="strategy-tip-close" aria-label="Close">×</button>
+                  </span>
+                </span>
+              </th>
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border);">Buy &amp; hold ({{ result.years }}Y)</th>
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border);">Excess</th>
+              <th style="text-align: right; padding: 0.75rem; border-bottom: 1px solid var(--border);">Trades</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in result.rows %}
+              <tr>
+                <td style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border);">
+                  <a href="{{ row.yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">{{ row.symbol }}</a>
+                </td>
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">
+                  {% if row.strategy_pct is not none %}
+                    {{ "%.1f" | format(row.strategy_pct) }}%
+                  {% else %}
+                    <span style="color: var(--muted);">—</span> {% if row.error %}<span style="font-size: 0.8em; color: var(--muted);">({{ row.error }})</span>{% endif %}
+                  {% endif %}
+                </td>
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">
+                  {% if row.buy_hold_pct is not none and row.buy_hold_pct == row.buy_hold_pct %}{{ "%.1f" | format(row.buy_hold_pct) }}%{% else %}<span style="color: var(--muted);">—</span>{% endif %}
+                </td>
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">
+                  {% if row.excess_pct is not none %}
+                    <span style="color: {% if row.excess_pct >= 0 %}var(--accent){% else %}#f87171{% endif %};">{{ "%+.1f" | format(row.excess_pct) }}%</span>
+                  {% else %}
+                    <span style="color: var(--muted);">—</span>
+                  {% endif %}
+                </td>
+                <td style="text-align: right; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border);">{{ row.trades }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+    <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--muted);">Strategy return = total return from following the rule (long when signal, else cash). Excess = strategy return − buy &amp; hold. Past performance does not guarantee future results.</p>
+  {% endif %}
+{% endblock %}
+{% block extra_css %}
+  .strategies-form input:focus, .strategies-form select:focus { outline: none; border-color: var(--accent); }
+  .strategy-tip-wrap { position: relative; display: inline-flex; align-items: center; gap: 0.25rem; }
+  .strategy-tip-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.25rem; height: 1.25rem; padding: 0; border: none; border-radius: 50%;
+    background: var(--border); color: var(--text); font-size: 0.75rem; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .strategy-tip-btn:hover { background: var(--accent); color: var(--bg); }
+  .strategy-tip-popover {
+    display: none; position: absolute; z-index: 20; top: 100%; right: 0; margin-top: 0.25rem;
+    width: 300px; max-width: 90vw; padding: 0.75rem 1rem 0.5rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    font-size: 0.85rem; line-height: 1.45; color: var(--text); white-space: normal;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .strategy-tip-wrap.is-open .strategy-tip-popover { display: block; }
+  .strategy-tip-title { display: block; font-size: 0.8rem; color: var(--accent); margin-bottom: 0.35rem; }
+  .strategy-tip-body { margin: 0 0 0.5rem; }
+  .strategy-tip-close {
+    position: absolute; top: 0.35rem; right: 0.5rem;
+    width: 1.5rem; height: 1.5rem; padding: 0; border: none; border-radius: 4px;
+    background: transparent; color: var(--muted); font-size: 1.1rem; line-height: 1; cursor: pointer;
+  }
+  .strategy-tip-close:hover { background: var(--border); color: var(--text); }
+{% endblock %}
+{% block extra_js %}
+  <script>
+  (function() {
+    function closeAll() {
+      document.querySelectorAll('.strategy-tip-wrap.is-open').forEach(function(w) { w.classList.remove('is-open'); });
+    }
+    document.querySelectorAll('.strategy-tip-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var wrap = btn.closest('.strategy-tip-wrap');
+        if (!wrap) return;
+        var isOpen = wrap.classList.contains('is-open');
+        closeAll();
+        if (!isOpen) wrap.classList.add('is-open');
+      });
+    });
+    document.querySelectorAll('.strategy-tip-popover').forEach(function(pop) {
+      pop.addEventListener('click', function(e) { e.stopPropagation(); });
+    });
+    document.querySelectorAll('.strategy-tip-close').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        btn.closest('.strategy-tip-wrap').classList.remove('is-open');
+      });
+    });
+    document.addEventListener('click', closeAll);
+  })();
+  </script>
+{% endblock %}

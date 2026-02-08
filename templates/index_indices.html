@@ -1,7 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Stock Analysis Heatmaps – Indices{% endblock %}
+{% block title %}Financial Markets Analysis – Indexes{% endblock %}
 {% block content %}
-  <h2>Select an index</h2>
+  <section class="headlines-on-index" style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1.25rem; margin: 0 0 0.75rem;">Top 10 headlines about indexes</h2>
+    {% if headlines | default([]) %}
+      <ul style="list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden;">
+        {% for item in headlines %}
+          <li style="margin: 0; padding: 0.75rem 1rem; {% if not loop.last %}border-bottom: 1px solid var(--border);{% endif %}">
+            <a href="{{ item.link }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; font-weight: 500;">{{ item.title }}</a>
+            <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;">{{ item.source }}{% if item.published %} · {{ item.published }}{% endif %}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p style="color: var(--muted); margin: 0; font-size: 0.9rem;">No headlines. Check the <a href="{{ url_for('news') }}" style="color: var(--accent);">News</a> tab.</p>
+    {% endif %}
+  </section>
+
+  <h2 style="margin-top: 0;">Past performance by index</h2>
   <p style="color: var(--muted); margin-bottom: 1.5rem;">Data and heatmaps are grouped by index (symbol list). Choose one to view periods.</p>
   <div class="period-grid">
     {% for idx in indices %}

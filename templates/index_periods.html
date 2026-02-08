@@ -2,7 +2,7 @@
 {% block title %}{{ index_label }} – Periods{% endblock %}
 {% block nav %}
   <nav>
-    <a href="{{ url_for('index') }}">Indices</a>
+    <a href="{{ url_for('index') }}">Indexes</a>
     {% for p in periods %}
       <a href="{{ url_for('index_period', index_id=index_id, period_id=p.id) }}">{{ p.id }}</a>
     {% endfor %}
