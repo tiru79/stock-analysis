@@ -407,7 +407,7 @@ MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "O
 
 
 def monthly_returns_for_year(df: pd.DataFrame, year: int) -> dict | None:
-    """For one calendar year: monthly return % (1..12) and year total. Returns dict with keys 1..12, 'year_pct', 'growth_10k' or None."""
+    """For one calendar year: monthly return % (1..12), start-of-month price (1..12), year total. Returns dict with keys 1..12, 'year_pct', 'growth_10k', 'start_prices' or None."""
     if df.empty or "close" not in df.columns or "date" not in df.columns:
         return None
     sub = df[df["date"].dt.year == year].sort_values("date").reset_index(drop=True)
@@ -428,11 +428,17 @@ def monthly_returns_for_year(df: pd.DataFrame, year: int) -> dict | None:
     year_pct = float((last / first - 1.0) * 100.0)
     out["year_pct"] = year_pct
     out["growth_10k"] = f"${10_000.0 * (1.0 + year_pct / 100.0):,.0f}"
+    # Price at start of each month: start of Jan = first close of year; start of month m = end of month m-1
+    month_ends = {monthly.index[i].month: float(monthly.iloc[i]) for i in range(len(monthly))}
+    start_prices: dict[int, float | None] = {1: round(first, 2)}
+    for m in range(2, 13):
+        start_prices[m] = round(month_ends[m - 1], 2) if (m - 1) in month_ends else None
+    out["start_prices"] = start_prices
     return out
 
 
 def monthly_returns_since(df: pd.DataFrame, start_year: int) -> list[dict]:
-    """From start_year to last full year: for each year, monthly return % (1..12) and year total. Sorted year descending."""
+    """From start_year to last full year: for each year, monthly return % (1..12), start-of-month price, and year total. Sorted year descending."""
     if df.empty or "close" not in df.columns or "date" not in df.columns:
         return []
     df_idx = df.set_index("date")
@@ -461,9 +467,15 @@ def monthly_returns_since(df: pd.DataFrame, start_year: int) -> list[dict]:
         if first <= 0:
             continue
         year_pct = float((last / first - 1.0) * 100.0)
+        year_monthly = year_df.set_index("date")["close"].resample("ME").last().dropna()
+        month_ends = {year_monthly.index[i].month: float(year_monthly.iloc[i]) for i in range(len(year_monthly))}
+        start_prices: dict[int, float | None] = {1: round(first, 2)}
+        for m in range(2, 13):
+            start_prices[m] = round(month_ends[m - 1], 2) if (m - 1) in month_ends else None
         out.append({
             "year": year,
             "months": months_dict,
+            "start_prices": start_prices,
             "year_pct": year_pct,
             "growth_10k": f"${10_000.0 * (1.0 + year_pct / 100.0):,.0f}",
         })
