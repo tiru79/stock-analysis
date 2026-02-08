@@ -897,13 +897,18 @@ def compare():
 CHART_YEARS_DEFAULT = 20
 
 
+CHART_INDICATORS = ("sma20", "sma50", "sma200", "ema20", "ema50")
+
+
 def build_chart_series(
-    symbols: list[str], years: int = 20, indicators: list[str] | None = None
+    symbols: list[str],
+    years: int = 20,
+    indicators: list[str] | None = None,
+    use_actual_price: bool = False,
 ) -> dict:
-    """Build time series for chart: all series aligned to a common date index so symbols with different ranges plot correctly. Price normalized to 100 at start; optional SMA 50/200."""
+    """Build time series for chart: all series aligned to a common date index. When use_actual_price=False, price normalized to 100 at start; when True, use actual close price (for single-symbol chart). Optional SMA/EMA indicators in same scale."""
     indicators = indicators or []
-    # Collect per-symbol: list of (date_str, value) for price and each indicator
-    raw_series: list[tuple[str, str, list[tuple[str, float | None]]]] = []  # (symbol, type, [(date, val), ...])
+    raw_series: list[tuple[str, str, list[tuple[str, float | None]]]] = []
     all_dates: set[str] = set()
     missing: list[str] = []
     for sym in symbols:
@@ -924,29 +929,52 @@ def build_chart_series(
         date_strs = [d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else str(d)[:10] for d in df["date"]]
         for d in date_strs:
             all_dates.add(d)
-        normalized = (100.0 * close / first).round(2)
-        price_tuples = [(date_strs[i], round(float(normalized.iloc[i]), 2)) for i in range(len(date_strs))]
+        if use_actual_price:
+            price_tuples = [(date_strs[i], round(float(close.iloc[i]), 2)) for i in range(len(date_strs))]
+        else:
+            normalized = (100.0 * close / first).round(2)
+            price_tuples = [(date_strs[i], round(float(normalized.iloc[i]), 2)) for i in range(len(date_strs))]
         raw_series.append((sym, "price", price_tuples))
         for ind in indicators:
-            if ind == "sma50":
+            if ind == "sma20":
+                sma = close.rolling(window=20, min_periods=1).mean()
+                vals = (sma if use_actual_price else (100.0 * sma / first)).round(2)
+                tuples = [(date_strs[i], None if pd.isna(vals.iloc[i]) else round(float(vals.iloc[i]), 2)) for i in range(len(date_strs))]
+                raw_series.append((f"{sym} SMA 20", "sma20", tuples))
+            elif ind == "sma50":
                 sma = close.rolling(window=50, min_periods=1).mean()
-                norm_sma = (100.0 * sma / first).round(2)
-                tuples = [(date_strs[i], None if pd.isna(norm_sma.iloc[i]) else round(float(norm_sma.iloc[i]), 2)) for i in range(len(date_strs))]
+                vals = (sma if use_actual_price else (100.0 * sma / first)).round(2)
+                tuples = [(date_strs[i], None if pd.isna(vals.iloc[i]) else round(float(vals.iloc[i]), 2)) for i in range(len(date_strs))]
                 raw_series.append((f"{sym} SMA 50", "sma50", tuples))
             elif ind == "sma200":
                 sma = close.rolling(window=200, min_periods=1).mean()
-                norm_sma = (100.0 * sma / first).round(2)
-                tuples = [(date_strs[i], None if pd.isna(norm_sma.iloc[i]) else round(float(norm_sma.iloc[i]), 2)) for i in range(len(date_strs))]
+                vals = (sma if use_actual_price else (100.0 * sma / first)).round(2)
+                tuples = [(date_strs[i], None if pd.isna(vals.iloc[i]) else round(float(vals.iloc[i]), 2)) for i in range(len(date_strs))]
                 raw_series.append((f"{sym} SMA 200", "sma200", tuples))
-    # Common date index (sorted) so all series have same length
+            elif ind == "ema20":
+                ema = close.ewm(span=20, adjust=False).mean()
+                vals = (ema if use_actual_price else (100.0 * ema / first)).round(2)
+                tuples = [(date_strs[i], None if pd.isna(vals.iloc[i]) else round(float(vals.iloc[i]), 2)) for i in range(len(date_strs))]
+                raw_series.append((f"{sym} EMA 20", "ema20", tuples))
+            elif ind == "ema50":
+                ema = close.ewm(span=50, adjust=False).mean()
+                vals = (ema if use_actual_price else (100.0 * ema / first)).round(2)
+                tuples = [(date_strs[i], None if pd.isna(vals.iloc[i]) else round(float(vals.iloc[i]), 2)) for i in range(len(date_strs))]
+                raw_series.append((f"{sym} EMA 50", "ema50", tuples))
     common_dates = sorted(all_dates) if all_dates else []
-    date_to_idx = {d: i for i, d in enumerate(common_dates)}
     series = []
     for sym, typ, tuples in raw_series:
         val_by_date = dict(tuples)
         values = [val_by_date.get(d, None) for d in common_dates]
         series.append({"symbol": sym, "dates": common_dates, "values": values, "type": typ})
-    return {"series": series, "dates": common_dates, "missing": missing, "years": years, "indicators": indicators}
+    return {
+        "series": series,
+        "dates": common_dates,
+        "missing": missing,
+        "years": years,
+        "indicators": indicators,
+        "use_actual_price": use_actual_price,
+    }
 
 
 @app.route("/charts")
@@ -957,9 +985,9 @@ def charts():
         raw = DEFAULT_COMPARE_SYMBOLS
     symbols = parse_compare_symbols(raw) if raw else []
     years = min(20, max(5, int(request.args.get("years", CHART_YEARS_DEFAULT) or CHART_YEARS_DEFAULT)))
-    indicators = [x.strip().lower() for x in request.args.getlist("indicators") if x and x.strip().lower() in ("sma50", "sma200")]
+    indicators = [x.strip().lower() for x in request.args.getlist("indicators") if x and x.strip().lower() in CHART_INDICATORS]
     if not indicators and request.args.get("indicators"):
-        indicators = [x.strip().lower() for x in request.args.get("indicators", "").split(",") if x.strip().lower() in ("sma50", "sma200")]
+        indicators = [x.strip().lower() for x in request.args.get("indicators", "").split(",") if x.strip().lower() in CHART_INDICATORS]
     chart_data = (
         build_chart_series(symbols[:8], years=years, indicators=indicators)
         if symbols
@@ -973,6 +1001,43 @@ def charts():
         chart_data_json=chart_data_json,
         years=years,
         indicators=indicators,
+    )
+
+
+@app.route("/symbol-chart")
+def symbol_chart():
+    """Individual stock performance chart: one symbol, normalized to 100, with optional indicators and total return."""
+    raw = request.args.get("symbol", "").strip().upper()
+    symbol = raw if raw else None
+    if symbol:
+        symbols = parse_compare_symbols(raw)
+        symbol = symbols[0] if symbols else None
+    years = min(20, max(5, int(request.args.get("years", CHART_YEARS_DEFAULT) or CHART_YEARS_DEFAULT)))
+    indicators = [x.strip().lower() for x in request.args.getlist("indicators") if x and x.strip().lower() in CHART_INDICATORS]
+    if not indicators and request.args.get("indicators"):
+        indicators = [x.strip().lower() for x in request.args.get("indicators", "").split(",") if x.strip().lower() in CHART_INDICATORS]
+    chart_data = (
+        build_chart_series([symbol], years=years, indicators=indicators, use_actual_price=True)
+        if symbol
+        else {"series": [], "missing": [], "years": years, "indicators": [], "use_actual_price": True}
+    )
+    total_return: float | None = None
+    if symbol and chart_data.get("series") and symbol not in (chart_data.get("missing") or []):
+        path = find_symbol_csv(symbol)
+        if path:
+            df = load_symbol_data(path)
+            total_return = total_return_pct(df, years)
+    chart_data_json = json.dumps(chart_data, default=lambda x: None)
+    return render_template(
+        "symbol_chart.html",
+        symbol_param=raw,
+        symbol=symbol,
+        chart_data=chart_data,
+        chart_data_json=chart_data_json,
+        years=years,
+        indicators=indicators,
+        total_return_pct=total_return,
+        yahoo_url=f"https://finance.yahoo.com/quote/{symbol}" if symbol else None,
     )
 
 
