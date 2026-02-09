@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Charts ({{ years }}Y) – Financial Markets Analysis{% endblock %}
+{% block title %}Performance ({{ years }}Y) – Financial Markets{% endblock %}
 {% block content %}
   <h2>20-year price charts</h2>
-  <p style="color: var(--muted); margin-bottom: 1rem;">Compare symbols over the last 20 years (normalized to 100 at start). Data from your downloaded CSVs. For one symbol with <a href="{{ url_for('symbol_chart') }}" style="color: var(--accent); text-decoration: none;">actual price chart</a>, use Individual price.</p>
+  <p style="color: var(--muted); margin-bottom: 1rem;">Compare symbols over the last 20 years (normalized to 100 at start). Data from your downloaded CSVs. For <a href="{{ url_for('symbol_chart') }}" style="color: var(--accent); text-decoration: none;">actual price charts</a> per symbol, use Price charts.</p>
 
   <form method="get" action="{{ url_for('charts') }}" style="margin-bottom: 1.5rem;">
     <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
       <div>
         <label for="symbols" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbols</label>
         <input type="text" id="symbols" name="symbols" value="{{ symbols_param|default('', true) }}"
-          placeholder="e.g. QQQ, SPY, SLV, GLD"
+          placeholder="e.g. QQQ, SPY, SLV, GLD, SMH, SOXX"
           style="width: 320px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" />
       </div>
       <div>
@@ -54,7 +54,7 @@
     </div>
     <p style="font-size: 0.85rem; color: var(--muted);">Indexed to 100 at start of period. Use &quot;Technical indicators&quot; to add SMA 20/50/200 and EMA 20/50 (each with a distinct color). Up to 8 symbols. Past performance does not guarantee future results.</p>
   {% else %}
-    <p style="color: var(--muted);">Enter symbols and click Update chart. Use comma-separated tickers (e.g. QQQ, SPY, SLV, GLD).</p>
+    <p style="color: var(--muted);">Enter symbols and click Update chart. Use comma-separated tickers (e.g. QQQ, SPY, SLV, GLD, SMH, SOXX).</p>
   {% endif %}
 {% endblock %}
 {% block extra_css %}

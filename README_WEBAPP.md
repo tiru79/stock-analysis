@@ -1,4 +1,4 @@
-# Financial Markets Analysis – Web App
+# Financial Markets – Web App
 
 Present your generated heatmaps in a simple web UI.
 

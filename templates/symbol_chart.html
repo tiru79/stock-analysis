@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Individual: {{ symbol|default('Stock', true) }} ({{ years }}Y) – Financial Markets Analysis{% endblock %}
+{% block title %}Price charts{% if charts %}: {{ charts|map(attribute='symbol')|join(', ') }}{% endif %} ({{ years }}Y) – Financial Markets{% endblock %}
 {% block content %}
-  <h2>Individual price chart</h2>
-  <p style="color: var(--muted); margin-bottom: 1rem;">Chart one symbol’s actual closing price over the last 5–20 years. Y-axis is price (e.g. $). Add SMA/EMA indicators in the same scale.</p>
+  <h2>Price charts</h2>
+  <p style="color: var(--muted); margin-bottom: 1rem;">One chart per symbol: actual closing price over the last 5–20 years. Y-axis is price ($). Add SMA/EMA indicators in the same scale. Default: QQQ, SPY, SLV, GLD, SMH, SOXX.</p>
 
   <form method="get" action="{{ url_for('symbol_chart') }}" class="symbol-chart-form" style="margin-bottom: 1.5rem;">
     <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
       <div>
-        <label for="symbol" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbol</label>
-        <input type="text" id="symbol" name="symbol" value="{{ symbol_param|default('', true) }}"
-          placeholder="e.g. QQQ, SPY, AAPL"
-          style="width: 140px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" autofocus />
+        <label for="symbols" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbols</label>
+        <input type="text" id="symbols" name="symbols" value="{{ symbols_param|default('', true) }}"
+          placeholder="e.g. QQQ, SPY, SLV, GLD, SMH, SOXX"
+          style="width: 280px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" autofocus />
       </div>
       <div>
         <label for="years" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Years</label>
@@ -20,113 +20,122 @@
       <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;">
         <span style="font-size: 0.9rem; color: var(--muted);">Indicators:</span>
         <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
-          <input type="checkbox" name="indicators" value="sma20" {% if 'sma20' in chart_data.indicators %}checked{% endif %} /> SMA 20
+          <input type="checkbox" name="indicators" value="sma20" {% if 'sma20' in indicators %}checked{% endif %} /> SMA 20
         </label>
         <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
-          <input type="checkbox" name="indicators" value="sma50" {% if 'sma50' in chart_data.indicators %}checked{% endif %} /> SMA 50
+          <input type="checkbox" name="indicators" value="sma50" {% if 'sma50' in indicators %}checked{% endif %} /> SMA 50
         </label>
         <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
-          <input type="checkbox" name="indicators" value="sma200" {% if 'sma200' in chart_data.indicators %}checked{% endif %} /> SMA 200
+          <input type="checkbox" name="indicators" value="sma200" {% if 'sma200' in indicators %}checked{% endif %} /> SMA 200
         </label>
         <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
-          <input type="checkbox" name="indicators" value="ema20" {% if 'ema20' in chart_data.indicators %}checked{% endif %} /> EMA 20
+          <input type="checkbox" name="indicators" value="ema20" {% if 'ema20' in indicators %}checked{% endif %} /> EMA 20
         </label>
         <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
-          <input type="checkbox" name="indicators" value="ema50" {% if 'ema50' in chart_data.indicators %}checked{% endif %} /> EMA 50
+          <input type="checkbox" name="indicators" value="ema50" {% if 'ema50' in indicators %}checked{% endif %} /> EMA 50
         </label>
       </div>
-      <button type="submit" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;">Show chart</button>
+      <button type="submit" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;">Show charts</button>
     </div>
   </form>
 
-  {% if chart_data.missing and symbol_param %}
-    <p style="color: #f59e0b; margin-bottom: 1rem;">No data for {{ chart_data.missing | join(", ") }}. Download data first (e.g. <code style="background: var(--surface); padding: 2px 6px;">python scripts/download_by_index.py NASDAQ100</code>).</p>
+  {% if missing and symbols_param %}
+    <p style="color: #f59e0b; margin-bottom: 1rem;">No data for {{ missing | join(", ") }}. Download data first (e.g. <code style="background: var(--surface); padding: 2px 6px;">python scripts/download_by_index.py NASDAQ100</code>).</p>
   {% endif %}
 
-  {% if chart_data.series and symbol %}
-    {% if total_return_pct is not none %}
-      <p style="margin-bottom: 0.75rem; font-size: 0.95rem;">
-        <strong>{{ symbol }}</strong> total return over {{ years }} year{{ 's' if years != 1 else '' }}: <span style="font-family: 'JetBrains Mono', monospace; color: {% if total_return_pct >= 0 %}var(--accent){% else %}#f87171{% endif %};">{{ "%.1f" | format(total_return_pct) }}%</span>
-        {% if yahoo_url %}
-          · <a href="{{ yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">View on Yahoo Finance ↗</a>
-        {% endif %}
-      </p>
-    {% endif %}
-    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 1rem;">
-      <canvas id="chartSymbol" style="max-height: 480px;" width="800" height="450"></canvas>
-    </div>
+  {% if charts %}
+    {% for c in charts %}
+      <section style="margin-bottom: 2rem;">
+        <p style="margin-bottom: 0.75rem; font-size: 0.95rem;">
+          <strong>{{ c.symbol }}</strong>{% if c.total_return_pct is not none %} total return over {{ years }} year{{ 's' if years != 1 else '' }}: <span style="font-family: 'JetBrains Mono', monospace; color: {% if c.total_return_pct >= 0 %}var(--accent){% else %}#f87171{% endif %};">{{ "%.1f" | format(c.total_return_pct) }}%</span>{% endif %}
+          <a href="{{ c.yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; margin-left: 0.5rem;">Yahoo Finance ↗</a>
+        </p>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem;">
+          <canvas id="chartSymbol_{{ c.symbol }}" style="max-height: 420px;" width="800" height="400"></canvas>
+        </div>
+      </section>
+    {% endfor %}
     <p style="font-size: 0.85rem; color: var(--muted);">Closing price (adjusted for splits/dividends). Past performance does not guarantee future results.</p>
   {% else %}
-    <p style="color: var(--muted);">Enter a symbol and click Show chart to view individual stock performance.</p>
+    <p style="color: var(--muted);">Enter one or more symbols (comma-separated) and click Show charts. Default: QQQ, SPY, SLV, GLD, SMH, SOXX.</p>
   {% endif %}
 {% endblock %}
 {% block extra_css %}
   .symbol-chart-form input:focus { outline: none; border-color: var(--accent); }
 {% endblock %}
 {% block extra_js %}
-  {% if chart_data.series and symbol %}
+  {% if charts %}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
   (function() {
-    var chartData = {{ chart_data_json | safe }};
-    if (!chartData.series || chartData.series.length === 0) return;
     var priceColor = '#22c55e';
     var indicatorColors = { sma20: '#06b6d4', sma50: '#f59e0b', sma200: '#6366f1', ema20: '#a855f7', ema50: '#ec4899' };
-    var datasets = chartData.series.map(function(s) {
-      var indType = s.type && indicatorColors[s.type] ? s.type : null;
-      var color = indType ? indicatorColors[indType] : priceColor;
-      var dash = indType ? (s.type === 'sma200' || s.type === 'sma50' ? [8, 4] : [4, 3]) : [];
-      return {
-        label: s.symbol,
-        data: s.values,
-        borderColor: color,
-        backgroundColor: color + '20',
-        borderWidth: indType ? 1.8 : 2,
-        borderDash: dash,
-        fill: false,
-        tension: 0.1,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-        spanGaps: false
-      };
-    });
-    var labels = chartData.dates && chartData.dates.length ? chartData.dates : (chartData.series[0] && chartData.series[0].dates);
-    var isPrice = chartData.use_actual_price === true;
-    var formatY = function(v) { return isPrice ? '$' + (v >= 1 || v <= -1 ? v.toFixed(2) : v.toFixed(4)) : v.toFixed(1); };
-    new Chart(document.getElementById('chartSymbol'), {
-      type: 'line',
-      data: { labels: labels, datasets: datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        interaction: { intersect: false, mode: 'index' },
-        plugins: {
-          legend: { position: 'top', labels: { color: '#e4e4e7', usePointStyle: true } },
-          tooltip: {
-            backgroundColor: '#18181c',
-            titleColor: '#e4e4e7',
-            bodyColor: '#e4e4e7',
-            borderColor: '#2a2a30',
-            borderWidth: 1,
-            callbacks: {
-              label: function(ctx) {
-                if (ctx.parsed.y == null) return ctx.dataset.label + ': —';
-                return ctx.dataset.label + ': ' + formatY(ctx.parsed.y);
+    var chartConfigs = [
+      {% for c in charts %}
+      { id: 'chartSymbol_{{ c.symbol }}', chartData: {{ c.chart_data_json | safe }} }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ];
+    chartConfigs.forEach(function(cfg) {
+      var chartData = cfg.chartData;
+      if (!chartData.series || chartData.series.length === 0) return;
+      var datasets = chartData.series.map(function(s) {
+        var indType = s.type && indicatorColors[s.type] ? s.type : null;
+        var color = indType ? indicatorColors[indType] : priceColor;
+        var dash = indType ? (s.type === 'sma200' || s.type === 'sma50' ? [8, 4] : [4, 3]) : [];
+        return {
+          label: s.symbol,
+          data: s.values,
+          borderColor: color,
+          backgroundColor: color + '20',
+          borderWidth: indType ? 1.8 : 2,
+          borderDash: dash,
+          fill: false,
+          tension: 0.1,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          spanGaps: false
+        };
+      });
+      var labels = chartData.dates && chartData.dates.length ? chartData.dates : (chartData.series[0] && chartData.series[0].dates);
+      var isPrice = chartData.use_actual_price === true;
+      var formatY = function(v) { return isPrice ? '$' + (v >= 1 || v <= -1 ? v.toFixed(2) : v.toFixed(4)) : v.toFixed(1); };
+      var el = document.getElementById(cfg.id);
+      if (!el) return;
+      new Chart(el, {
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { position: 'top', labels: { color: '#e4e4e7', usePointStyle: true } },
+            tooltip: {
+              backgroundColor: '#18181c',
+              titleColor: '#e4e4e7',
+              bodyColor: '#e4e4e7',
+              borderColor: '#2a2a30',
+              borderWidth: 1,
+              callbacks: {
+                label: function(ctx) {
+                  if (ctx.parsed.y == null) return ctx.dataset.label + ': —';
+                  return ctx.dataset.label + ': ' + formatY(ctx.parsed.y);
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { color: '#2a2a30' }, ticks: { color: '#71717a', maxTicksLimit: 12 } },
+            y: {
+              grid: { color: '#2a2a30' },
+              ticks: {
+                color: '#71717a',
+                callback: function(value) { return isPrice ? '$' + value : value; }
               }
             }
           }
-        },
-        scales: {
-          x: { grid: { color: '#2a2a30' }, ticks: { color: '#71717a', maxTicksLimit: 12 } },
-          y: {
-            grid: { color: '#2a2a30' },
-            ticks: {
-              color: '#71717a',
-              callback: function(value) { return isPrice ? '$' + value : value; }
-            }
-          }
         }
-      }
+      });
     });
   })();
   </script>

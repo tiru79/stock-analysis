@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Range probability – Financial Markets{% endblock %}
+{% block content %}
+  <h2>Future monthly price range probability</h2>
+  <p style="color: var(--muted); margin-bottom: 1rem;">Uses historical monthly returns to estimate a probable price range for the next month(s) using 1σ (68%), 2σ (95%), and 3σ (99.7%) intervals. Based on normal distribution of past returns.</p>
+
+  <form method="get" action="{{ url_for('price_range') }}" class="price-range-form" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
+      <div>
+        <label for="symbols" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Symbols</label>
+        <input type="text" id="symbols" name="symbols" value="{{ symbols_param|default('', true) }}"
+          placeholder="e.g. QQQ, SPY, SLV, GLD, SMH, SOXX"
+          style="width: 220px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" />
+      </div>
+      <div>
+        <label for="months_ahead" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Months ahead</label>
+        <input type="number" id="months_ahead" name="months_ahead" value="{{ months_ahead|default(1, true) }}" min="1" max="12"
+          style="width: 80px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" />
+      </div>
+      <div>
+        <label for="lookback_years" style="display: block; margin-bottom: 0.35rem; font-size: 0.9rem;">Lookback (years)</label>
+        <input type="number" id="lookback_years" name="lookback_years" value="{{ lookback_years|default(20, true) }}" min="5" max="30"
+          style="width: 80px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);" />
+      </div>
+      <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem; padding-bottom: 0.1rem;">
+        <input type="checkbox" name="next_12" value="1" {% if next_12_months %}checked{% endif %} />
+        Next 12 months (each month)
+      </label>
+      <button type="submit" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;">Show ranges</button>
+    </div>
+  </form>
+
+  {% if result and result.missing %}
+    <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem;">No data for: {{ result.missing | join(", ") }}</p>
+  {% endif %}
+
+  {% if result and result.rows %}
+    <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem;">Based on {{ result.lookback_years }} years of monthly returns. Ranges are statistical (≈68% / 95% / 99.7% probability), not guarantees.</p>
+
+    {% if result.next_12_months %}
+      {% for r in result.rows %}
+        {% if r.monthly_ranges %}
+          <section style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 0.5rem; font-size: 1rem;"><a href="{{ r.yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">{{ r.symbol }}</a></h3>
+            <p style="margin: 0 0 0.75rem; font-size: 0.9rem;">
+              Current: <strong style="font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.current_price) }}</strong>
+              · Mean: {{ "%.2f" | format(r.mean_return_pct) }}%/mo · σ: {{ "%.2f" | format(r.std_return_pct) }}%/mo ({{ r.n_months }} months)
+            </p>
+            <div style="overflow-x: auto;">
+              <table class="monthly-range-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                <thead>
+                  <tr>
+                    <th style="text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);">Month</th>
+                    <th style="text-align: right; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);">Expected</th>
+                    <th style="text-align: right; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">1σ Low</th>
+                    <th style="text-align: right; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">1σ High</th>
+                    <th style="text-align: right; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">2σ Low</th>
+                    <th style="text-align: right; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">2σ High</th>
+                    <th style="text-align: right; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">3σ Low</th>
+                    <th style="text-align: right; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">3σ High</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in r.monthly_ranges %}
+                    <tr>
+                      <td style="padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border);">Month {{ row.month }}</td>
+                      <td style="text-align: right; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(row.expected_price) }}</td>
+                      <td style="text-align: right; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(row.low_1sigma) }}</td>
+                      <td style="text-align: right; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(row.high_1sigma) }}</td>
+                      <td style="text-align: right; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(row.low_2sigma) }}</td>
+                      <td style="text-align: right; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(row.high_2sigma) }}</td>
+                      <td style="text-align: right; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(row.low_3sigma) }}</td>
+                      <td style="text-align: right; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(row.high_3sigma) }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+        {% for r in result.rows %}
+          {% if r.ranges %}
+            <section style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 1rem 1.25rem; min-width: 280px;">
+              <h3 style="margin: 0 0 0.5rem; font-size: 1rem;"><a href="{{ r.yahoo_url }}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">{{ r.symbol }}</a></h3>
+              <p style="margin: 0 0 0.75rem; font-size: 0.9rem;">
+                Current: <strong style="font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.current_price) }}</strong>
+                · Mean return: {{ "%.2f" | format(r.mean_return_pct) }}%/mo · σ: {{ "%.2f" | format(r.std_return_pct) }}%/mo ({{ r.n_months }} months)
+              </p>
+              <p style="margin: 0 0 0.5rem; font-size: 0.85rem; color: var(--muted);">Expected in {{ result.months_ahead }} month{{ 's' if result.months_ahead != 1 else '' }}: <span style="font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.ranges.expected_price) }}</span></p>
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                  <tr>
+                    <th style="text-align: left; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">Probability</th>
+                    <th style="text-align: right; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">Low</th>
+                    <th style="text-align: right; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);">High</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">1σ (≈68%)</td>
+                    <td style="text-align: right; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.ranges.low_1sigma) }}</td>
+                    <td style="text-align: right; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.ranges.high_1sigma) }}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">2σ (≈95%)</td>
+                    <td style="text-align: right; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.ranges.low_2sigma) }}</td>
+                    <td style="text-align: right; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.ranges.high_2sigma) }}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 0.5rem 0;">3σ (≈99.7%)</td>
+                    <td style="text-align: right; padding: 0.5rem 0; font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.ranges.low_3sigma) }}</td>
+                    <td style="text-align: right; padding: 0.5rem 0; font-family: 'JetBrains Mono', monospace;">${{ "%.2f" | format(r.ranges.high_3sigma) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% elif result and result.rows and ((next_12_months and not (result.rows[0].monthly_ranges|default([]))) or (not next_12_months and not result.rows[0].ranges)) %}
+    <p style="color: var(--muted);">Enter symbols and click Show ranges. Data from your downloaded CSVs.</p>
+  {% endif %}
+
+  {% if result and not result.rows %}
+    <p style="color: var(--muted);">Enter one or more symbols to see future price range probability (1σ, 2σ, 3σ).</p>
+  {% endif %}
+{% endblock %}
+{% block extra_css %}
+  .price-range-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+{% endblock %}

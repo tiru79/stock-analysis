@@ -17,7 +17,7 @@ if ! python -c "import flask" 2>/dev/null; then
   pip install -q flask
 fi
 if ! python -c "import pandas" 2>/dev/null; then
-  echo "Installing pandas (required for Compare symbols) ..."
+  echo "Installing pandas (required for Compare) ..."
   pip install -q pandas
 fi
 if ! python -c "import yfinance" 2>/dev/null; then
@@ -36,4 +36,5 @@ if command -v lsof >/dev/null 2>&1; then
 fi
 
 echo "Starting web app at http://127.0.0.1:$PORT"
+echo "  (For ngrok/localtunnel: open the https URL from another device if same-Mac browser fails; see TUNNEL_ACCESS.md)"
 python app.py

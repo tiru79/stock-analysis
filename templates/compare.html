@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Compare symbols – Financial Markets Analysis{% endblock %}
+{% block title %}Compare – Financial Markets{% endblock %}
 {% block content %}
   <h2>Compare performance (YTD, 1Y – 20Y)</h2>
   <p style="color: var(--muted); margin-bottom: 1rem;">Enter tickers separated by commas or spaces. Table shows total return % and growth of $10,000 (YTD and over the last N full calendar years).</p>
@@ -11,7 +11,7 @@
       id="symbols"
       name="symbols"
       value="{{ symbols_param }}"
-      placeholder="e.g. QQQ, SPY, SLV, GLD"
+      placeholder="e.g. QQQ, SPY, SLV, GLD, SMH, SOXX"
       style="width: 100%; max-width: 420px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
       autofocus
     />

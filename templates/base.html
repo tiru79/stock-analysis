@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Financial Markets Analysis{% endblock %}</title>
+  <title>{% block title %}Financial Markets{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -32,18 +32,37 @@
       padding: 1rem 0;
     }
     header .wrap { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-    h1 { font-size: 1.35rem; font-weight: 700; margin: 0; letter-spacing: -0.02em; }
-    h1 a { color: inherit; text-decoration: none; }
-    h1 a:hover { color: var(--accent); }
+    header h1 { font-size: 1.35rem; font-weight: 700; margin: 0; letter-spacing: -0.02em; flex-shrink: 0; }
+    header h1 a { color: inherit; text-decoration: none; }
+    header h1 a:hover { color: var(--accent); }
+    header nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.25rem;
+    }
     nav a {
       color: var(--muted);
       text-decoration: none;
       font-size: 0.9rem;
       padding: 0.35rem 0.6rem;
       border-radius: 6px;
+      white-space: nowrap;
     }
     nav a:hover { color: var(--text); background: var(--surface); }
     nav a.active { color: var(--accent); font-weight: 600; }
+    @media (max-width: 768px) {
+      .wrap { padding: 0.75rem 1rem; }
+      header .wrap { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+      header h1 { text-align: center; }
+      header nav { justify-content: center; gap: 0.35rem; }
+      nav a { font-size: 0.85rem; padding: 0.5rem 0.5rem; min-height: 2.5rem; display: inline-flex; align-items: center; justify-content: center; }
+    }
+    @media (max-width: 480px) {
+      header nav { gap: 0.3rem; }
+      nav a { font-size: 0.8rem; padding: 0.4rem 0.45rem; }
+    }
     main { padding: 1.5rem 0 3rem; }
     h2 { font-size: 1.15rem; font-weight: 600; margin: 0 0 1rem; color: var(--text); }
     .card {
@@ -75,17 +94,18 @@
 <body>
   <header>
     <div class="wrap">
-      <h1><a href="{{ url_for('landing') }}">Financial Markets Analysis</a></h1>
+      <h1><a href="{{ url_for('landing') }}">Financial Markets</a></h1>
       <nav>
-        <a href="{{ url_for('news') }}">News</a>
-        <a href="{{ url_for('index') }}">Indexes</a>
-        <a href="{{ url_for('compare') }}">Compare symbols</a>
-        <a href="{{ url_for('symbol_growth') }}">$10K growth</a>
-        <a href="{{ url_for('monthly_performance') }}">Monthly performance</a>
-        <a href="{{ url_for('strategies') }}">Strategies</a>
-        <a href="{{ url_for('charts') }}">Charts</a>
-        <a href="{{ url_for('symbol_chart') }}">Individual price</a>
-        <a href="/calendar" title="Upcoming earnings calendar">Calendar</a>
+        <a href="{{ url_for('news') }}" {% if request.endpoint == 'news' %}class="active"{% endif %}>News</a>
+        <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Indexes</a>
+        <a href="{{ url_for('compare') }}" {% if request.endpoint == 'compare' %}class="active"{% endif %}>Compare</a>
+        <a href="{{ url_for('symbol_growth') }}" {% if request.endpoint == 'symbol_growth' %}class="active"{% endif %}>$10K growth</a>
+        <a href="{{ url_for('monthly_performance') }}" {% if request.endpoint == 'monthly_performance' %}class="active"{% endif %}>Monthly returns</a>
+        <a href="{{ url_for('price_range') }}" {% if request.endpoint == 'price_range' %}class="active"{% endif %}>Range probability</a>
+        <a href="{{ url_for('strategies') }}" {% if request.endpoint == 'strategies' %}class="active"{% endif %}>Strategies</a>
+        <a href="{{ url_for('charts') }}" {% if request.endpoint == 'charts' %}class="active"{% endif %}>Performance</a>
+        <a href="{{ url_for('symbol_chart') }}" {% if request.endpoint == 'symbol_chart' %}class="active"{% endif %}>Price charts</a>
+        <a href="/calendar" title="Upcoming earnings calendar" {% if request.endpoint == 'calendar' %}class="active"{% endif %}>Calendar</a>
       </nav>
       {% block nav %}{% endblock %}
     </div>

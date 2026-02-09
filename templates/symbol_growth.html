@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}$10K growth since {{ start_year|default(2016) }} – {{ symbols_param|default('') or 'Financial Markets Analysis' }}{% endblock %}
+{% block title %}$10K growth since {{ start_year|default(2016) }} – {{ symbols_param|default('') or 'Financial Markets' }}{% endblock %}
 {% block content %}
   <h2>Cumulative $10K growth</h2>
   <p style="color: var(--muted); margin-bottom: 1rem;">Enter symbols to see how $10,000 invested at the start of the chosen year would have grown by the end of each year. Default start year is 2016.</p>
@@ -13,7 +13,7 @@
           id="symbols"
           name="symbols"
           value="{{ symbols_param|default('', true) }}"
-          placeholder="e.g. QQQ, SPY, SLV, GLD"
+          placeholder="e.g. QQQ, SPY, SLV, GLD, SMH, SOXX"
           style="width: 220px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
           autofocus
         />

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Monthly performance{% if result.year %} {{ result.year }}{% elif result.since %} since {{ result.since }}{% endif %} – Financial Markets Analysis{% endblock %}
+{% block title %}Monthly returns{% if result.year %} {{ result.year }}{% elif result.since %} since {{ result.since }}{% endif %} – Financial Markets{% endblock %}
 {% block content %}
-  <h2>Monthly performance</h2>
+  <h2>Monthly returns</h2>
   <p style="color: var(--muted); margin-bottom: 1rem;">Enter one or more symbols and either a <strong>year</strong> (single year) or <strong>since</strong> (from that year to latest). Table shows monthly return % and full-year return.</p>
 
   <form method="get" action="{{ url_for('monthly_performance') }}" class="monthly-perf-form" style="margin-bottom: 1.5rem;">
@@ -13,7 +13,7 @@
           id="symbols"
           name="symbols"
           value="{{ symbols_param|default('', true) }}"
-          placeholder="e.g. QQQ, SPY, SLV, GLD"
+          placeholder="e.g. QQQ, SPY, SLV, GLD, SMH, SOXX"
           style="width: 220px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
           autofocus
         />

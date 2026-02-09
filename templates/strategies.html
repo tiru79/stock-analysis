@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Strategies – Financial Markets Analysis{% endblock %}
+{% block title %}Strategies – Financial Markets{% endblock %}
 {% block content %}
   <h2>Technical analysis strategies</h2>
   <p style="color: var(--muted); margin-bottom: 1rem;">Backtest simple rules on your data. Compare strategy return vs buy-and-hold over the last N years. Data from your downloaded CSVs.</p>
@@ -16,7 +16,7 @@
           id="symbols"
           name="symbols"
           value="{{ symbols_param|default('', true) }}"
-          placeholder="e.g. QQQ, SPY, SLV, GLD"
+          placeholder="e.g. QQQ, SPY, SLV, GLD, SMH, SOXX"
           style="width: 320px; padding: 0.6rem 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);"
         />
       </div>

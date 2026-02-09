@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Financial Markets Analysis – Market trends, sentiment &amp; news{% endblock %}
+{% block title %}Financial Markets – Market trends, sentiment &amp; news{% endblock %}
 {% block content %}
   <section class="landing-hero" style="margin-bottom: 2rem;">
     <h2 style="font-size: 1.5rem; font-weight: 700; margin: 0 0 0.5rem; letter-spacing: -0.02em;">Current market at a glance</h2>
@@ -81,7 +81,7 @@
 
   <p style="margin-top: 1.5rem; text-align: center;">
     <a href="{{ url_for('index') }}" class="card" style="display: inline-block; padding: 0.75rem 1.5rem;">View heatmaps by index →</a>
-    <a href="{{ url_for('compare') }}" class="card" style="display: inline-block; padding: 0.75rem 1.5rem; margin-left: 0.5rem;">Compare symbols →</a>
+    <a href="{{ url_for('compare') }}" class="card" style="display: inline-block; padding: 0.75rem 1.5rem; margin-left: 0.5rem;">Compare →</a>
     <a href="{{ url_for('news') }}" class="card" style="display: inline-block; padding: 0.75rem 1.5rem; margin-left: 0.5rem;">More news →</a>
   </p>
 {% endblock %}

@@ -1,5 +1,5 @@
 """
-Financial Markets Analysis – Web App
+Financial Markets – Web App
 
 Serves the generated heatmap images with navigation by period (2y, 5y, 10y, 20y, etc.).
 Run: flask --app app run  (or: python app.py)
@@ -60,7 +60,8 @@ SYMBOLS_DIR = _APP_DIR / "symbols"
 COMPARE_PERIODS = list(range(1, 21))  # 1Y through 20Y
 COMPARE_PERIODS_WITH_YTD: list[str | int] = ["YTD"] + COMPARE_PERIODS  # display order
 CALENDAR_WEEKS_AHEAD = 6
-DEFAULT_COMPARE_SYMBOLS = "QQQ, SPY, SLV, GLD"  # Nasdaq 100, S&P 500, Silver, Gold ETFs
+DEFAULT_COMPARE_SYMBOLS = "QQQ, SPY, SLV, GLD, SMH, SOXX"  # Nasdaq 100, S&P 500, Silver, Gold, Semis ETFs
+DEFAULT_SYMBOL_CHART_SYMBOLS = "QQQ, SPY, SLV, GLD, SMH, SOXX"  # Price charts default
 
 
 def _period_sort_key(name: str) -> tuple:
@@ -172,7 +173,7 @@ def _safe_path(parts: str) -> bool:
     return ".." not in parts and "\0" not in parts
 
 
-# --- Compare symbols: find data, compute returns for 1Y..20Y ---
+# --- Compare: find data, compute returns for 1Y..20Y ---
 
 
 def find_symbol_csv(symbol: str) -> Path | None:
@@ -534,6 +535,147 @@ def build_monthly_performance_table(
         "year": year if mode == "year" else None,
         "since": start_year if mode == "since" else None,
         "mode": mode,
+    }
+
+
+def monthly_return_stats(df: pd.DataFrame, lookback_years: int = 20) -> tuple[float | None, float | None, int]:
+    """Compute mean and std of monthly returns (%). Returns (mean_pct, std_pct, n_months) or (None, None, 0) if insufficient data."""
+    if df.empty or "close" not in df.columns or "date" not in df.columns:
+        return None, None, 0
+    df = filter_to_last_n_years(df, lookback_years)
+    if len(df) < 2:
+        return None, None, 0
+    df_idx = df.set_index("date")
+    monthly = df_idx["close"].resample("ME").last().dropna()
+    if len(monthly) < 2:
+        return None, None, 0
+    ret_pct = monthly.pct_change().dropna() * 100.0
+    if len(ret_pct) < 2:
+        return None, None, 0
+    mean_pct = float(ret_pct.mean())
+    std_pct = float(ret_pct.std())
+    if pd.isna(std_pct) or std_pct <= 0:
+        std_pct = 0.0
+    return mean_pct, std_pct, len(ret_pct)
+
+
+def build_price_range_probability(
+    symbols: list[str],
+    months_ahead: int = 1,
+    lookback_years: int = 20,
+    next_12_months: bool = False,
+) -> dict:
+    """Build future monthly price range probability using 1σ, 2σ, 3σ from historical monthly returns. If next_12_months=True, include ranges for each of months 1..12."""
+    rows: list[dict] = []
+    missing: list[str] = []
+    for sym in symbols:
+        path = find_symbol_csv(sym)
+        if path is None:
+            missing.append(sym)
+            rows.append({
+                "symbol": sym,
+                "yahoo_url": f"https://finance.yahoo.com/quote/{sym}",
+                "current_price": None,
+                "mean_return_pct": None,
+                "std_return_pct": None,
+                "n_months": 0,
+                "ranges": None,
+                "monthly_ranges": None,
+            })
+            continue
+        df = load_symbol_data(path)
+        if df.empty or len(df) < 2 or "close" not in df.columns:
+            missing.append(sym)
+            rows.append({
+                "symbol": sym,
+                "yahoo_url": f"https://finance.yahoo.com/quote/{sym}",
+                "current_price": None,
+                "mean_return_pct": None,
+                "std_return_pct": None,
+                "n_months": 0,
+                "ranges": None,
+                "monthly_ranges": None,
+            })
+            continue
+        current = float(df["close"].iloc[-1])
+        if current <= 0:
+            missing.append(sym)
+            rows.append({
+                "symbol": sym,
+                "yahoo_url": f"https://finance.yahoo.com/quote/{sym}",
+                "current_price": None,
+                "mean_return_pct": None,
+                "std_return_pct": None,
+                "n_months": 0,
+                "ranges": None,
+                "monthly_ranges": None,
+            })
+            continue
+        mean_pct, std_pct, n_months = monthly_return_stats(df, lookback_years)
+        if mean_pct is None or std_pct is None or n_months < 2:
+            missing.append(sym)
+            rows.append({
+                "symbol": sym,
+                "yahoo_url": f"https://finance.yahoo.com/quote/{sym}",
+                "current_price": round(current, 2),
+                "mean_return_pct": None,
+                "std_return_pct": None,
+                "n_months": n_months,
+                "ranges": None,
+                "monthly_ranges": None,
+            })
+            continue
+
+        def price_at_return(current_p: float, r_pct: float) -> float:
+            return round(current_p * (1.0 + r_pct / 100.0), 2)
+
+        n = max(1, months_ahead)
+        mu_n = mean_pct * n
+        sigma_n = std_pct * (n ** 0.5)
+        ranges = {
+            "low_1sigma": price_at_return(current, mu_n - 1.0 * sigma_n),
+            "high_1sigma": price_at_return(current, mu_n + 1.0 * sigma_n),
+            "low_2sigma": price_at_return(current, mu_n - 2.0 * sigma_n),
+            "high_2sigma": price_at_return(current, mu_n + 2.0 * sigma_n),
+            "low_3sigma": price_at_return(current, mu_n - 3.0 * sigma_n),
+            "high_3sigma": price_at_return(current, mu_n + 3.0 * sigma_n),
+            "expected_price": price_at_return(current, mu_n),
+        }
+
+        monthly_ranges: list[dict] | None = None
+        if next_12_months:
+            monthly_ranges = []
+            for m in range(1, 13):
+                mu_m = mean_pct * m
+                sigma_m = std_pct * (m ** 0.5)
+                monthly_ranges.append({
+                    "month": m,
+                    "expected_price": price_at_return(current, mu_m),
+                    "low_1sigma": price_at_return(current, mu_m - 1.0 * sigma_m),
+                    "high_1sigma": price_at_return(current, mu_m + 1.0 * sigma_m),
+                    "low_2sigma": price_at_return(current, mu_m - 2.0 * sigma_m),
+                    "high_2sigma": price_at_return(current, mu_m + 2.0 * sigma_m),
+                    "low_3sigma": price_at_return(current, mu_m - 3.0 * sigma_m),
+                    "high_3sigma": price_at_return(current, mu_m + 3.0 * sigma_m),
+                })
+
+        rows.append({
+            "symbol": sym,
+            "yahoo_url": f"https://finance.yahoo.com/quote/{sym}",
+            "current_price": round(current, 2),
+            "mean_return_pct": round(mean_pct, 3),
+            "std_return_pct": round(std_pct, 3),
+            "n_months": n_months,
+            "months_ahead": n,
+            "ranges": ranges,
+            "monthly_ranges": monthly_ranges,
+        })
+    return {
+        "rows": rows,
+        "missing": missing,
+        "months_ahead": months_ahead,
+        "lookback_years": lookback_years,
+        "next_12_months": next_12_months,
     }
 
 
@@ -991,7 +1133,7 @@ def build_chart_series(
 
 @app.route("/charts")
 def charts():
-    """Charts tab: 20-year price chart (normalized to 100) and optional technical indicators. Data from downloaded CSVs."""
+    """Performance tab: 20-year price chart (normalized to 100) and optional technical indicators. Data from downloaded CSVs."""
     raw = request.args.get("symbols", "").strip()
     if not raw:
         raw = DEFAULT_COMPARE_SYMBOLS
@@ -1018,38 +1160,68 @@ def charts():
 
 @app.route("/symbol-chart")
 def symbol_chart():
-    """Individual stock performance chart: one symbol, normalized to 100, with optional indicators and total return."""
-    raw = request.args.get("symbol", "").strip().upper()
-    symbol = raw if raw else None
-    if symbol:
-        symbols = parse_compare_symbols(raw)
-        symbol = symbols[0] if symbols else None
+    """Price charts: one chart per symbol (actual price), with optional indicators and total return."""
+    raw = request.args.get("symbols", "").strip() or DEFAULT_SYMBOL_CHART_SYMBOLS
+    symbols = parse_compare_symbols(raw) if raw else []
     years = min(20, max(5, int(request.args.get("years", CHART_YEARS_DEFAULT) or CHART_YEARS_DEFAULT)))
     indicators = [x.strip().lower() for x in request.args.getlist("indicators") if x and x.strip().lower() in CHART_INDICATORS]
     if not indicators and request.args.get("indicators"):
         indicators = [x.strip().lower() for x in request.args.get("indicators", "").split(",") if x.strip().lower() in CHART_INDICATORS]
-    chart_data = (
-        build_chart_series([symbol], years=years, indicators=indicators, use_actual_price=True)
-        if symbol
-        else {"series": [], "missing": [], "years": years, "indicators": [], "use_actual_price": True}
-    )
-    total_return: float | None = None
-    if symbol and chart_data.get("series") and symbol not in (chart_data.get("missing") or []):
-        path = find_symbol_csv(symbol)
-        if path:
-            df = load_symbol_data(path)
-            total_return = total_return_pct(df, years)
-    chart_data_json = json.dumps(chart_data, default=lambda x: None)
+    charts: list[dict] = []
+    missing: list[str] = []
+    for sym in (symbols[:12] if symbols else []):  # cap at 12 charts
+        chart_data = build_chart_series([sym], years=years, indicators=indicators, use_actual_price=True)
+        if sym in (chart_data.get("missing") or []):
+            missing.append(sym)
+            continue
+        total_return: float | None = None
+        if chart_data.get("series") and sym not in (chart_data.get("missing") or []):
+            path = find_symbol_csv(sym)
+            if path:
+                df = load_symbol_data(path)
+                total_return = total_return_pct(df, years)
+        charts.append({
+            "symbol": sym,
+            "chart_data": chart_data,
+            "chart_data_json": json.dumps(chart_data, default=lambda x: None),
+            "total_return_pct": total_return,
+            "yahoo_url": f"https://finance.yahoo.com/quote/{sym}",
+        })
     return render_template(
         "symbol_chart.html",
-        symbol_param=raw,
-        symbol=symbol,
-        chart_data=chart_data,
-        chart_data_json=chart_data_json,
+        symbols_param=raw,
+        charts=charts,
+        missing=missing,
         years=years,
         indicators=indicators,
-        total_return_pct=total_return,
-        yahoo_url=f"https://finance.yahoo.com/quote/{symbol}" if symbol else None,
+    )
+
+
+@app.route("/price-range")
+def price_range():
+    """Future monthly price range probability using 1σ, 2σ, 3σ from historical monthly returns."""
+    raw = request.args.get("symbols", "").strip() or DEFAULT_COMPARE_SYMBOLS
+    symbols = parse_compare_symbols(raw) if raw else []
+    months_ahead = min(12, max(1, int(request.args.get("months_ahead", 1) or 1)))
+    lookback_years = min(30, max(5, int(request.args.get("lookback_years", 20) or 20)))
+    next_12 = request.args.get("next_12") in ("1", "on", "yes", "true")
+    result = (
+        build_price_range_probability(
+            symbols,
+            months_ahead=months_ahead,
+            lookback_years=lookback_years,
+            next_12_months=next_12,
+        )
+        if symbols
+        else {"rows": [], "missing": [], "months_ahead": 1, "lookback_years": 20, "next_12_months": False}
+    )
+    return render_template(
+        "price_range.html",
+        symbols_param=raw,
+        result=result,
+        months_ahead=months_ahead,
+        lookback_years=lookback_years,
+        next_12_months=next_12,
     )
 
 
@@ -1765,7 +1937,7 @@ def symbol_growth():
 
 @app.route("/monthly-performance")
 def monthly_performance():
-    """Monthly performance: 1+ symbols and a year (single year) or since year (multi-year monthly returns)."""
+    """Monthly returns: 1+ symbols and a year (single year) or since year (multi-year monthly returns)."""
     symbols_param = (request.args.get("symbols") or "").strip() or DEFAULT_COMPARE_SYMBOLS
     symbols = parse_compare_symbols(symbols_param) if symbols_param else []
     year_param = (request.args.get("year") or "").strip()
@@ -1832,4 +2004,5 @@ if __name__ == "__main__":
         indices = [p.name for p in HEATMAPS_DIR.iterdir() if p.is_dir()]
         print(f"  indices: {indices[:5]}{'...' if len(indices) > 5 else ''}")
     print("  Debug: http://127.0.0.1:5000/heatmaps-debug")
-    app.run(debug=True, port=5000)
+    # host='0.0.0.0' so tunnels (ngrok, localtunnel) can reach the app from any interface
+    app.run(debug=True, host="0.0.0.0", port=5000)
