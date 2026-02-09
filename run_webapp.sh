@@ -25,16 +25,26 @@ if ! python -c "import yfinance" 2>/dev/null; then
   pip install -q yfinance
 fi
 
-PORT=5000
+# Use 5001 to avoid conflict with macOS AirPlay Receiver (which uses 5000)
+PORT=5001
 if command -v lsof >/dev/null 2>&1; then
-  PIDS=$(lsof -ti :"$PORT" 2>/dev/null || true)
-  if [[ -n "$PIDS" ]]; then
-    echo "Port $PORT in use. Stopping existing process(es): $PIDS"
-    echo "$PIDS" | xargs kill -9 2>/dev/null || true
-    sleep 1
-  fi
+  for try_port in 5001 5002 5003; do
+    PIDS=$(lsof -ti :"$try_port" 2>/dev/null || true)
+    if [[ -n "$PIDS" ]]; then
+      echo "Port $try_port in use. Stopping existing process(es): $PIDS"
+      echo "$PIDS" | xargs kill -9 2>/dev/null || true
+      sleep 2
+    fi
+    if ! lsof -ti :"$try_port" >/dev/null 2>&1; then
+      PORT=$try_port
+      break
+    fi
+    echo "Port $try_port still in use, trying next..."
+  done
 fi
 
+export PORT
 echo "Starting web app at http://127.0.0.1:$PORT"
-echo "  (For ngrok/localtunnel: open the https URL from another device if same-Mac browser fails; see TUNNEL_ACCESS.md)"
+echo "  (For ngrok/localtunnel: use port $PORT, e.g. ngrok http 127.0.0.1:$PORT)"
+echo "  (If not accessible: keep this terminal open; restart with ./run_webapp.sh if the app stops.)"
 python app.py

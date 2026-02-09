@@ -3,10 +3,11 @@ Financial Markets – Web App
 
 Serves the generated heatmap images with navigation by period (2y, 5y, 10y, 20y, etc.).
 Run: flask --app app run  (or: python app.py)
-Then open http://127.0.0.1:5000
+Then open http://127.0.0.1:5001
 """
 
 import json
+import os
 import re
 import sys
 import time
@@ -2003,6 +2004,7 @@ if __name__ == "__main__":
     if HEATMAPS_DIR.exists():
         indices = [p.name for p in HEATMAPS_DIR.iterdir() if p.is_dir()]
         print(f"  indices: {indices[:5]}{'...' if len(indices) > 5 else ''}")
-    print("  Debug: http://127.0.0.1:5000/heatmaps-debug")
+    port = int(os.environ.get("PORT", "5001"))
+    print(f"  Debug: http://127.0.0.1:{port}/heatmaps-debug")
     # host='0.0.0.0' so tunnels (ngrok, localtunnel) can reach the app from any interface
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=port)

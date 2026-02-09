@@ -1,6 +1,6 @@
 # Accessing the app via tunnel (ngrok / localtunnel)
 
-If **http://127.0.0.1:5000** works on your Mac but the **ngrok** URL shows **"This site can't provide a secure connection"** or **ERR_SSL_PROTOCOL_ERROR** ("sent an invalid response"), your Mac’s connection to ngrok’s domain is failing TLS. The tunnel and app are fine; the problem is only this machine’s outbound TLS to ngrok.
+If **http://127.0.0.1:5001** works on your Mac but the **ngrok** URL shows **"This site can't provide a secure connection"** or **ERR_SSL_PROTOCOL_ERROR** ("sent an invalid response"), your Mac’s connection to ngrok’s domain is failing TLS. The tunnel and app are fine; the problem is only this machine’s outbound TLS to ngrok.
 
 ## Option A: Try Chrome on this Mac
 
@@ -12,8 +12,8 @@ Your Mac’s connection to the tunnel domain (ngrok-free.dev) may fail TLS; othe
 
 1. **Keep the app and tunnel running on your Mac:**
    - Terminal 1: `./run_webapp.sh` (Flask)
-   - Terminal 2: **ngrok** → `ngrok http 127.0.0.1:5000`  
-     **or** **localtunnel** → `npx localtunnel --port 5000`
+   - Terminal 2: **ngrok** → `ngrok http 127.0.0.1:5001`  
+     **or** **localtunnel** → `npx localtunnel --port 5001`
 
 2. **Get the public URL:**
    - From the ngrok terminal output, or
@@ -29,16 +29,23 @@ Your Mac’s connection to the tunnel domain (ngrok-free.dev) may fail TLS; othe
 ## Copy the public URL from your Mac
 
 - **Ngrok:** In the terminal where ngrok is running, copy the line like  
-  `Forwarding   https://something.ngrok-free.dev -> http://127.0.0.1:5000`  
+  `Forwarding   https://something.ngrok-free.dev -> http://127.0.0.1:5001`  
   Or open **http://127.0.0.1:4040** in your browser (ngrok’s local dashboard) and copy the https URL from there, then type or paste it on your phone.
+
+## When the app or tunnel is not accessible
+
+1. **Flask must be running** – In Terminal 1 run `./run_webapp.sh` and leave it open. If it exited, run it again.
+2. **Use the correct port** – The script may use 5001, 5002, or 5003. Use the port printed when you start the app (e.g. `http://127.0.0.1:5002`). For ngrok/localtunnel use that same port: `ngrok http 127.0.0.1:5002`.
+3. **Tunnel must be running** – In Terminal 2 keep ngrok or localtunnel running. If you restarted the app, the tunnel is still valid; if you restarted the computer, start both again.
+4. **Try from another device** – Open the **https** tunnel URL on your phone or another computer; often it works when the same Mac’s browser fails.
 
 ## Quick reference
 
 | Step | Command / URL |
 |------|----------------|
-| Start app | `./run_webapp.sh` |
-| Start ngrok | `ngrok http 127.0.0.1:5000` |
-| Start localtunnel | `npx localtunnel --port 5000` |
-| Local URL | http://127.0.0.1:5000 |
+| Start app | `./run_webapp.sh` (see printed port: 5001, 5002, or 5003) |
+| Start ngrok | `ngrok http 127.0.0.1:PORT` (use the port from step above) |
+| Start localtunnel | `npx localtunnel --port PORT` |
+| Local URL | http://127.0.0.1:PORT |
 | Ngrok dashboard (copy URL) | http://127.0.0.1:4040 |
 | Public URL | Use the **https** URL from ngrok or localtunnel (open from phone/other device) |
