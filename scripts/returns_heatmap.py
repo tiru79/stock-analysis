@@ -16,6 +16,9 @@ Standalone usage (default: all indices, all symbols, 1y through 20y):
 Reads *_historical_data.csv from data dir (default stock_analysis/data), saves to stock_analysis/heatmaps/.
 With --index: uses data/<index>/ and heatmaps/<index>/<period>/ to match symbols/<index>/.
 Skips generating a heatmap if the output file already exists and is newer than the data file (use --force to re-generate).
+
+Storage: Default DPI=100 and PNG compress_level=6 to keep files smaller. Use --dpi 72 for even smaller files;
+use --years 5 10 20 to generate only those periods instead of 1y–20y.
 """
 
 import argparse
@@ -31,6 +34,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent
 SYMBOLS_DIR = ROOT / "symbols"
 DATA_DIR = ROOT / "data"
+
+# Output image settings (lower DPI = smaller files; 100 is a good balance)
+DPI = 100
 
 # ETF/symbol -> sector name (for heatmap titles)
 ETF_SECTORS = {
@@ -236,9 +242,11 @@ def symbols_from_data_folder(data_dir: Path | None = None) -> list[str]:
 
 
 def load_data(csv_path: Path) -> pd.DataFrame:
-    """Load CSV and parse dates."""
+    """Load CSV and parse dates. Handles ISO8601-style and mixed formats; invalid rows are dropped."""
     df = pd.read_csv(csv_path)
-    df["date"] = pd.to_datetime(df["date"], utc=True)
+    # Some CSVs have mixed formats (e.g. "2024-01-15 00:00:00-05:00" or malformed "00:00:00-05:00")
+    df["date"] = pd.to_datetime(df["date"], utc=True, errors="coerce")
+    df = df.dropna(subset=["date"])
     df = df.sort_values("date").reset_index(drop=True)
     return df
 
@@ -360,7 +368,12 @@ def plot_monthly_heatmap(
     for spine in ("top", "right", "bottom"):
         ax_top.spines[spine].set_visible(False)
     ax_top.patch.set_visible(False)
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.savefig(
+        output_path,
+        dpi=DPI,
+        bbox_inches="tight",
+        pil_kwargs={"compress_level": 6},
+    )
     plt.close()
     print(f"Saved: {output_path}")
 
@@ -471,7 +484,12 @@ def plot_comparison_heatmap(
     ax.xaxis.tick_top()
     ax.xaxis.set_label_position("top")
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.savefig(
+        output_path,
+        dpi=DPI,
+        bbox_inches="tight",
+        pil_kwargs={"compress_level": 6},
+    )
     plt.close()
     print(f"Saved: {output_path}")
 
@@ -530,7 +548,17 @@ def main():
         action="store_true",
         help="Re-generate heatmaps even if output is newer than the data file.",
     )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=100,
+        metavar="N",
+        help="DPI for output PNGs (default 100; lower = smaller files, e.g. 72 for web).",
+    )
     args = parser.parse_args()
+
+    global DPI
+    DPI = max(72, min(200, args.dpi))
 
     calendar_year = args.year
 

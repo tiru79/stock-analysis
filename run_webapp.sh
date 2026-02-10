@@ -24,6 +24,10 @@ if ! python -c "import yfinance" 2>/dev/null; then
   echo "Installing yfinance (required for Calendar) ..."
   pip install -q yfinance
 fi
+if ! python -c "import matplotlib" 2>/dev/null; then
+  echo "Installing matplotlib and seaborn (required for heatmap generation) ..."
+  pip install -q matplotlib seaborn
+fi
 
 # Use 5001 to avoid conflict with macOS AirPlay Receiver (which uses 5000)
 PORT=5001
